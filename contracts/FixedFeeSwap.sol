@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 
-contract FixedFeeSwap is ERC20 {
+contract FixedFeeSwap is ERC20, Ownable {
     using SafeERC20 for IERC20;
 
     IERC20 immutable public token0;
@@ -16,7 +17,7 @@ contract FixedFeeSwap is ERC20 {
     uint8 immutable private _decimals;
 
     uint256 constant private _DIRECTION_MASK = 1 << 255;
-    uint256 constant private _AMOUNT_MASK = ~(uint256(1) << 255);
+    uint256 constant private _AMOUNT_MASK = ~_DIRECTION_MASK;
     uint256 constant private _FEE_SCALE = 1e18;
 
     constructor(
@@ -46,16 +47,15 @@ contract FixedFeeSwap is ERC20 {
         share = depositFor(token0Amount, token1Amount, msg.sender);
     }
 
-    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public returns(uint256 share) {
+    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
         uint256 inputAmount = token0Amount + token1Amount;
         require(inputAmount > 0, "Empty deposit is not allowed");
 
         uint256 _totalSupply = totalSupply();
+        share = inputAmount;
         if (_totalSupply > 0) {
             uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this));
-            share = (totalBalance + inputAmount) * _totalSupply / totalBalance;
-        } else {
-            share = inputAmount;
+            share = inputAmount * _totalSupply / totalBalance;
         }
 
         if (token0Amount > 0) {
