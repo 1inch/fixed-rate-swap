@@ -11,12 +11,20 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
+    const args = [USDC, USDT, ether('0.0003').toString(), 'FixedFeeSwap', 'FFS', 6];
     const FixedFeeSwap = await deploy('FixedFeeSwap', {
-        args: [USDC, USDT, ether('0.0003'), 'FixedFeeSwap', 'FFS', 6],
+        args: args,
         from: deployer,
     });
 
     console.log('FixedFeeSwap deployed to:', FixedFeeSwap.address);
+
+    if (await getChainId() != 31337) {
+        await hre.run('verify:verify', {
+            address: FixedFeeSwap.address,
+            constructorArguments: args,
+        });
+    }
 };
 
 module.exports.skip = async () => true;
