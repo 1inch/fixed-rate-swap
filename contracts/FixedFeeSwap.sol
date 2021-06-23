@@ -43,6 +43,10 @@ contract FixedFeeSwap is ERC20, Ownable {
         return _decimals;
     }
 
+    function getReturn(uint256 inputAmount) public view returns(uint256 outputAmount) {
+        outputAmount = inputAmount * amountMultiplier / _FEE_SCALE;
+    }
+
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
         share = depositFor(token0Amount, token1Amount, msg.sender);
     }
@@ -87,25 +91,26 @@ contract FixedFeeSwap is ERC20, Ownable {
         }
     }
 
-    function swap(uint256 directionInputAmount) external returns(uint256 outputAmount) {
-        outputAmount = swapFor(directionInputAmount, msg.sender);
+    function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
+        outputAmount = swap0To1For(inputAmount, msg.sender);
     }
 
-    function swapFor(uint256 directionInputAmount, address to) public returns(uint256 outputAmount) {
-        uint256 inputAmount = directionInputAmount & _AMOUNT_MASK;
+    function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
+        outputAmount = swap1To0For(inputAmount, msg.sender);
+    }
+
+    function swap0To1For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+        return _swap(token0, token1, inputAmount, to);
+    }
+
+    function swap1To0For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+        return _swap(token1, token0, inputAmount, to);
+    }
+
+    function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
         outputAmount = getReturn(inputAmount);
         require(outputAmount > 0, "Empty swap is not allowed");
-
-        if (directionInputAmount & _DIRECTION_MASK == 0) {
-            token0.safeTransferFrom(msg.sender, address(this), inputAmount);
-            token1.safeTransfer(to, outputAmount);
-        } else {
-            token1.safeTransferFrom(msg.sender, address(this), inputAmount);
-            token0.safeTransfer(to, outputAmount);
-        }
-    }
-
-    function getReturn(uint256 inputAmount) public view returns(uint256 outputAmount) {
-        outputAmount = inputAmount * amountMultiplier / _FEE_SCALE;
+        tokenFrom.safeTransferFrom(msg.sender, address(this), inputAmount);
+        tokenTo.safeTransfer(to, outputAmount);
     }
 }
