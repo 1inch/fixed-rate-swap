@@ -12,7 +12,7 @@ contract FixedFeeSwap is ERC20, Ownable {
 
     IERC20 immutable public token0;
     IERC20 immutable public token1;
-    uint256 immutable public fee;
+    uint256 immutable public amountMultiplier;
 
     uint8 immutable private _decimals;
 
@@ -33,7 +33,7 @@ contract FixedFeeSwap is ERC20, Ownable {
         require(_fee < _FEE_SCALE, "Fee should be < 1");
         require(_fee > 0, "Fee should be > 0");
 
-        fee = _fee;
+        amountMultiplier = _FEE_SCALE - _fee;
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
@@ -106,6 +106,6 @@ contract FixedFeeSwap is ERC20, Ownable {
     }
 
     function getReturn(uint256 inputAmount) public view returns(uint256 outputAmount) {
-        outputAmount = inputAmount * fee / _FEE_SCALE;
+        outputAmount = inputAmount * amountMultiplier / _FEE_SCALE;
     }
 }
