@@ -3,37 +3,34 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 
-contract FixedFeeSwap is ERC20, Ownable {
+contract FixedRateSwap is ERC20, Ownable {
     using SafeERC20 for IERC20;
 
     IERC20 immutable public token0;
     IERC20 immutable public token1;
-    uint256 immutable public amountMultiplier;
+    uint256 immutable public minAmountMultiplier;
+    uint256 immutable public maxAmountMultiplier;
 
     uint8 immutable private _decimals;
 
-    uint256 constant private _DIRECTION_MASK = 1 << 255;
-    uint256 constant private _AMOUNT_MASK = ~_DIRECTION_MASK;
     uint256 constant private _FEE_SCALE = 1e18;
 
     constructor(
         IERC20 _token0,
         IERC20 _token1,
-        uint256 _fee,
         string memory name,
         string memory symbol,
         uint8 decimals_
     )
         ERC20(name, symbol)
     {
-        require(_fee < _FEE_SCALE, "Fee should be < 1");
-        require(_fee > 0, "Fee should be > 0");
-
-        amountMultiplier = _FEE_SCALE - _fee;
+        minAmountMultiplier = _FEE_SCALE - 0e18;
+        maxAmountMultiplier = _FEE_SCALE - 0.01e18;
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
@@ -43,7 +40,12 @@ contract FixedFeeSwap is ERC20, Ownable {
         return _decimals;
     }
 
-    function getReturn(uint256 inputAmount) public view returns(uint256 outputAmount) {
+    function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
+        uint256 fromBalance = tokenFrom.balanceOf(address(this));
+        uint256 toBalance = tokenTo.balanceOf(address(this));
+        uint256 averageRatio = 0.5e18 * (fromBalance + fromBalance + inputAmount) / (fromBalance + toBalance);
+        uint256 multiplierWeight = _getWeight(averageRatio);
+        uint256 amountMultiplier = (minAmountMultiplier * multiplierWeight + maxAmountMultiplier * (1e18 - multiplierWeight)) / 1e18;
         outputAmount = inputAmount * amountMultiplier / _FEE_SCALE;
     }
 
@@ -108,9 +110,19 @@ contract FixedFeeSwap is ERC20, Ownable {
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
-        outputAmount = getReturn(inputAmount);
+        outputAmount = getReturn(tokenFrom, tokenTo, inputAmount);
         require(outputAmount > 0, "Empty swap is not allowed");
         tokenFrom.safeTransferFrom(msg.sender, address(this), inputAmount);
         tokenTo.safeTransfer(to, outputAmount);
+    }
+
+    function _getWeight(uint256 ratio) private pure returns(uint256 weight) {
+        int256 r = 0.7626985859023444e18 - int256(ratio) * 1.7621075643977235e18 / 1e18;
+        int256 rr = r * r / 1e18;  // r^2
+        rr = rr * rr / 1e18;  // r^4
+        rr = rr * rr / 1e18;  // r^8
+        rr = rr * rr / 1e18;  // r^16
+        rr = rr * r / 1e18;  // r^17
+        return Math.min(Math.max(0, uint256(rr + 0.99e18)), 1e18);
     }
 }
