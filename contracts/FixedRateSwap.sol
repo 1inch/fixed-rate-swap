@@ -13,12 +13,12 @@ contract FixedRateSwap is ERC20, Ownable {
 
     IERC20 immutable public token0;
     IERC20 immutable public token1;
-    uint256 immutable public minAmountMultiplier;
-    uint256 immutable public maxAmountMultiplier;
 
     uint8 immutable private _decimals;
 
-    uint256 constant private _FEE_SCALE = 1e18;
+    uint256 immutable private _feeScale = 1e18;
+    uint256 immutable private _minAmountMultiplier = 1e18;
+    uint256 immutable private _maxAmountMultiplier = 0.99e18;
 
     constructor(
         IERC20 _token0,
@@ -29,8 +29,6 @@ contract FixedRateSwap is ERC20, Ownable {
     )
         ERC20(name, symbol)
     {
-        minAmountMultiplier = _FEE_SCALE - 0e18;
-        maxAmountMultiplier = _FEE_SCALE - 0.01e18;
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
@@ -45,8 +43,8 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 toBalance = tokenTo.balanceOf(address(this));
         uint256 averageRatio = 0.5e18 * (fromBalance + fromBalance + inputAmount) / (fromBalance + toBalance);
         uint256 multiplierWeight = _getWeight(averageRatio);
-        uint256 amountMultiplier = (minAmountMultiplier * multiplierWeight + maxAmountMultiplier * (1e18 - multiplierWeight)) / 1e18;
-        outputAmount = inputAmount * amountMultiplier / _FEE_SCALE;
+        uint256 amountMultiplier = (_minAmountMultiplier * multiplierWeight + _maxAmountMultiplier * (1e18 - multiplierWeight)) / 1e18;
+        outputAmount = inputAmount * amountMultiplier / _feeScale;
     }
 
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
