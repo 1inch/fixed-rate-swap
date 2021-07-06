@@ -54,6 +54,7 @@ contract FixedRateSwap is ERC20, Ownable {
     function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
         uint256 inputAmount = token0Amount + token1Amount;
         require(inputAmount > 0, "Empty deposit is not allowed");
+        require(to != address(this), "Deposit to this is forbidden");
 
         uint256 _totalSupply = totalSupply();
         share = inputAmount;
@@ -77,6 +78,7 @@ contract FixedRateSwap is ERC20, Ownable {
 
     function withdrawFor(uint256 amount, address to) public returns(uint256 token0Share, uint256 token1Share) {
         require(amount > 0, "Empty withdrawal is not allowed");
+        require(to != address(this), "Withdrawal to this is forbidden");
 
         uint256 _totalSupply = totalSupply();
         token0Share = token0.balanceOf(address(this)) * amount / _totalSupply;
@@ -92,19 +94,21 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
-        outputAmount = swap0To1For(inputAmount, msg.sender);
+        outputAmount = _swap(token0, token1, inputAmount, msg.sender);
     }
 
     function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
-        outputAmount = swap1To0For(inputAmount, msg.sender);
+        outputAmount = _swap(token1, token0, inputAmount, msg.sender);
     }
 
     function swap0To1For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
-        return _swap(token0, token1, inputAmount, to);
+        require(to != address(this), "Swap to this is forbidden");
+        outputAmount = _swap(token0, token1, inputAmount, to);
     }
 
     function swap1To0For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
-        return _swap(token1, token0, inputAmount, to);
+        require(to != address(this), "Swap to this is forbidden");
+        outputAmount = _swap(token1, token0, inputAmount, to);
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
