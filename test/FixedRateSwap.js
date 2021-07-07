@@ -78,16 +78,15 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         });
 
         it('should swap directly', async function () {
-            console.log((await this.fixedRateSwap.getReturn(this.USDT.address, this.USDC.address, ether('1'))).toString());
             await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet2 });
             expect(await this.USDT.balanceOf(wallet2)).to.bignumber.equal(ether('9'));
-            expect(await this.USDC.balanceOf(wallet2)).to.bignumber.equal(ether('10.999899493658835362'));
+            expect(await this.USDC.balanceOf(wallet2)).to.bignumber.equal(ether('10.999785325996316874'));
         });
 
         it('should swap inversly', async function () {
             await this.fixedRateSwap.swap1To0(ether('1'), { from: wallet2 });
             expect(await this.USDC.balanceOf(wallet2)).to.bignumber.equal(ether('9'));
-            expect(await this.USDT.balanceOf(wallet2)).to.bignumber.equal(ether('10.999899493658835362'));
+            expect(await this.USDT.balanceOf(wallet2)).to.bignumber.equal(ether('10.999785325996316874'));
         });
     });
 
@@ -96,6 +95,6 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet2 });
         await this.fixedRateSwap.withdraw(ether('2'), { from: wallet1 });
         expect(await this.USDT.balanceOf(wallet1)).to.be.bignumber.equal(ether('11'));
-        expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.000100506341164638'));
+        expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.000214674003683126'));
     });
 });

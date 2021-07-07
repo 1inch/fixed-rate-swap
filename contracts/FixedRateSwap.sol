@@ -16,9 +16,10 @@ contract FixedRateSwap is ERC20, Ownable {
 
     uint8 immutable private _decimals;
 
-    uint256 immutable private _feeScale = 1e18;
-    uint256 immutable private _minAmountMultiplier = 1e18;
-    uint256 immutable private _maxAmountMultiplier = 0.99e18;
+    uint256 constant private _ONE = 1e18;
+    uint256 constant private _C1 = 0.9999e18;
+    uint256 constant private _C2 = 3.3827123349983306e18;
+    uint256 constant private _C3 = 0.4568073509746632e18;
 
     constructor(
         IERC20 _token0,
@@ -38,13 +39,27 @@ contract FixedRateSwap is ERC20, Ownable {
         return _decimals;
     }
 
+    /*
+     * `getReturn` at point `x = inputBalance / (inputBalance + outputBalance)`:
+     * `getReturn(x) = 0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17`
+     * When balance is changed from `inputBalance` to `inputBalance + amount` we should take
+     * integral of getReturn to calculate proper amount:
+     * `getReturn(x0, x1) = (integral (0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17) dx from x=x0 to x=x1) / (x1 - x0)`
+     * `getReturn(x0, x1) = (0.9999 * x - 3.3827123349983306 * (x - 0.4568073509746632) ** 18 from x=x0 to x=x1) / (x1 - x0)`
+     * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.3827123349983306 * ((x0 - 0.4568073509746632) ** 18 - (x1 - 0.4568073509746632) ** 18)) / (x1 - x0)`
+     */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
         uint256 toBalance = tokenTo.balanceOf(address(this));
-        uint256 averageRatio = 0.5e18 * (fromBalance + fromBalance + inputAmount) / (fromBalance + toBalance);
-        uint256 multiplierWeight = _getWeight(averageRatio);
-        uint256 amountMultiplier = (_minAmountMultiplier * multiplierWeight + _maxAmountMultiplier * (1e18 - multiplierWeight)) / 1e18;
-        outputAmount = inputAmount * amountMultiplier / _feeScale;
+        uint256 x0 = _ONE * fromBalance / (fromBalance + toBalance);
+        uint256 x1 = _ONE * (fromBalance + inputAmount) / (fromBalance + toBalance);
+        uint256 x1subx0 = _ONE * inputAmount / (fromBalance + toBalance);
+        uint256 amountMultiplier = (
+            _C1 * x1subx0 +
+            _C2 * _powerHelper(x0) -
+            _C2 * _powerHelper(x1)
+        ) / x1subx0;
+        outputAmount = inputAmount * Math.min(amountMultiplier, _ONE) / _ONE;
     }
 
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
@@ -118,13 +133,16 @@ contract FixedRateSwap is ERC20, Ownable {
         tokenTo.safeTransfer(to, outputAmount);
     }
 
-    function _getWeight(uint256 ratio) private pure returns(uint256 weight) {
-        int256 r = 0.7626985859023444e18 - int256(ratio) * 1.7621075643977235e18 / 1e18;
-        int256 rr = r * r / 1e18;  // r^2
-        rr = rr * rr / 1e18;  // r^4
-        rr = rr * rr / 1e18;  // r^8
-        rr = rr * rr / 1e18;  // r^16
-        rr = rr * r / 1e18;  // r^17
-        return Math.min(Math.max(0, uint256(rr + 0.99e18)), 1e18);
+    function _powerHelper(uint256 x) private pure returns(uint256 p) {
+        if (x > _C3) {
+            p = x - _C3;
+        } else {
+            p = _C3 - x;
+        }
+        p = p * p / _ONE;  // p ^ 2
+        uint256 pp = p * p / _ONE;  // p ^ 4
+        pp = pp * pp / _ONE;  // p ^ 8
+        pp = pp * pp / _ONE;  // p ^ 16
+        p = p * pp / _ONE;  // p ^ 18
     }
 }
