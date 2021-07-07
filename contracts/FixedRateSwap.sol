@@ -52,6 +52,7 @@ contract FixedRateSwap is ERC20, Ownable {
         unchecked {
             uint256 fromBalance = tokenFrom.balanceOf(address(this));
             uint256 toBalance = tokenTo.balanceOf(address(this));
+            require(inputAmount <= toBalance, "input amount is too big");
             uint256 x0 = _ONE * fromBalance / (fromBalance + toBalance);
             uint256 x1 = _ONE * (fromBalance + inputAmount) / (fromBalance + toBalance);
             uint256 x1subx0 = _ONE * inputAmount / (fromBalance + toBalance);
