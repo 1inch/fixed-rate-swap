@@ -49,17 +49,19 @@ contract FixedRateSwap is ERC20, Ownable {
      * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.3827123349983306 * ((x0 - 0.4568073509746632) ** 18 - (x1 - 0.4568073509746632) ** 18)) / (x1 - x0)`
      */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
-        uint256 fromBalance = tokenFrom.balanceOf(address(this));
-        uint256 toBalance = tokenTo.balanceOf(address(this));
-        uint256 x0 = _ONE * fromBalance / (fromBalance + toBalance);
-        uint256 x1 = _ONE * (fromBalance + inputAmount) / (fromBalance + toBalance);
-        uint256 x1subx0 = _ONE * inputAmount / (fromBalance + toBalance);
-        uint256 amountMultiplier = (
-            _C1 * x1subx0 +
-            _C2 * _powerHelper(x0) -
-            _C2 * _powerHelper(x1)
-        ) / x1subx0;
-        outputAmount = inputAmount * Math.min(amountMultiplier, _ONE) / _ONE;
+        unchecked {
+            uint256 fromBalance = tokenFrom.balanceOf(address(this));
+            uint256 toBalance = tokenTo.balanceOf(address(this));
+            uint256 x0 = _ONE * fromBalance / (fromBalance + toBalance);
+            uint256 x1 = _ONE * (fromBalance + inputAmount) / (fromBalance + toBalance);
+            uint256 x1subx0 = _ONE * inputAmount / (fromBalance + toBalance);
+            uint256 amountMultiplier = (
+                _C1 * x1subx0 +
+                _C2 * _powerHelper(x0) -
+                _C2 * _powerHelper(x1)
+            ) / x1subx0;
+            outputAmount = inputAmount * Math.min(amountMultiplier, _ONE) / _ONE;
+        }
     }
 
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
@@ -134,15 +136,17 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function _powerHelper(uint256 x) private pure returns(uint256 p) {
-        if (x > _C3) {
-            p = x - _C3;
-        } else {
-            p = _C3 - x;
+        unchecked {
+            if (x > _C3) {
+                p = x - _C3;
+            } else {
+                p = _C3 - x;
+            }
+            p = p * p / _ONE;  // p ^ 2
+            uint256 pp = p * p / _ONE;  // p ^ 4
+            pp = pp * pp / _ONE;  // p ^ 8
+            pp = pp * pp / _ONE;  // p ^ 16
+            p = p * pp / _ONE;  // p ^ 18
         }
-        p = p * p / _ONE;  // p ^ 2
-        uint256 pp = p * p / _ONE;  // p ^ 4
-        pp = pp * pp / _ONE;  // p ^ 8
-        pp = pp * pp / _ONE;  // p ^ 16
-        p = p * pp / _ONE;  // p ^ 18
     }
 }
