@@ -1,7 +1,6 @@
-# Solidity Template
+# Fixed Rate Swap
 
-Hardhat template for solidity projects with preconfigured Github Actions and Coveralls support.
+Simple AMM that allows trade with fixed rate and variable fee.
 
-
-[![Build Status](https://github.com/zumzoom/solidity-template/workflows/CI/badge.svg)](https://github.com/zumzoom/solidity-template/actions)
-[![Coverage Status](https://coveralls.io/repos/github/zumzoom/solidity-template/badge.svg?branch=master)](https://coveralls.io/github/zumzoom/solidity-template?branch=master)
+[![Build Status](https://github.com/1inch/fixed-rate-swap/workflows/CI/badge.svg)](https://github.com/1inch/fixed-rate-swap/actions)
+[![Coverage Status](https://coveralls.io/repos/github/1inch/fixed-rate-swap/badge.svg?branch=master)](https://coveralls.io/github/1inch/fixed-rate-swap?branch=master)
