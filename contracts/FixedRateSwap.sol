@@ -74,6 +74,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 inputAmount = token0Amount + token1Amount;
         require(inputAmount > 0, "Empty deposit is not allowed");
         require(to != address(this), "Deposit to this is forbidden");
+        require(to != address(0), "Deposit to zero is forbidden");
 
         uint256 _totalSupply = totalSupply();
         share = inputAmount;
@@ -98,6 +99,7 @@ contract FixedRateSwap is ERC20, Ownable {
     function withdrawFor(uint256 amount, address to) public returns(uint256 token0Share, uint256 token1Share) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
+        require(to != address(0), "Withdrawal to zero is forbidden");
 
         uint256 _totalSupply = totalSupply();
         token0Share = token0.balanceOf(address(this)) * amount / _totalSupply;
@@ -122,11 +124,15 @@ contract FixedRateSwap is ERC20, Ownable {
 
     function swap0To1For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
+        require(to != address(0), "Swap to zero is forbidden");
+
         outputAmount = _swap(token0, token1, inputAmount, to);
     }
 
     function swap1To0For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
+        require(to != address(0), "Swap to zero is forbidden");
+
         outputAmount = _swap(token1, token0, inputAmount, to);
     }
 
