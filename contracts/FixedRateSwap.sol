@@ -137,6 +137,7 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
+        require(inputAmount > 0, "Input amount should be > 0");
         outputAmount = getReturn(tokenFrom, tokenTo, inputAmount);
         require(outputAmount > 0, "Empty swap is not allowed");
         tokenFrom.safeTransferFrom(msg.sender, address(this), inputAmount);
