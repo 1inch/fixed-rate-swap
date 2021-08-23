@@ -18,8 +18,8 @@ contract FixedRateSwap is ERC20, Ownable {
 
     uint256 constant private _ONE = 1e18;
     uint256 constant private _C1 = 0.9999e18;
-    uint256 constant private _C2 = 3.3827123349983306e18;
-    uint256 constant private _C3 = 0.4568073509746632e18;
+    uint256 constant private _C2 = 3.382712334998325432e18;
+    uint256 constant private _C3 = 0.456807350974663119e18;
 
     constructor(
         IERC20 _token0,
