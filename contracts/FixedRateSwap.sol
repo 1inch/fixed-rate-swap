@@ -122,14 +122,14 @@ contract FixedRateSwap is ERC20, Ownable {
         outputAmount = _swap(token1, token0, inputAmount, msg.sender);
     }
 
-    function swap0To1For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+    function swap0To1For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token0, token1, inputAmount, to);
     }
 
-    function swap1To0For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+    function swap1To0For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
