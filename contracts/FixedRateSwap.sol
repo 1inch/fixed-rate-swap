@@ -20,6 +20,7 @@ contract FixedRateSwap is ERC20, Ownable {
     uint256 constant private _C1 = 0.9999e18;
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
+    uint256 constant private _VIRTUAL_AMOUNT_PRECISION = 10**6;
 
     constructor(
         IERC20 _token0,
@@ -49,9 +50,13 @@ contract FixedRateSwap is ERC20, Ownable {
      * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.3827123349983306 * ((x0 - 0.4568073509746632) ** 18 - (x1 - 0.4568073509746632) ** 18)) / (x1 - x0)`
      */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
+        uint256 fromBalance = tokenFrom.balanceOf(address(this));
+        uint256 toBalance = tokenTo.balanceOf(address(this));
+        outputAmount = _getReturn(fromBalance, toBalance, inputAmount);
+    }
+
+    function _getReturn(uint256 fromBalance, uint256 toBalance, uint256 inputAmount) public pure returns(uint256 outputAmount) {
         unchecked {
-            uint256 fromBalance = tokenFrom.balanceOf(address(this));
-            uint256 toBalance = tokenTo.balanceOf(address(this));
             require(inputAmount <= toBalance, "input amount is too big");
             uint256 totalBalance = fromBalance + toBalance;
             uint256 x0 = _ONE * fromBalance / totalBalance;
@@ -66,12 +71,57 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
+    function checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool isBalanced) {
+        if ((token0Amount + x1) * (token1Balance + y1) - (token1Amount - y1) * (token0Balance - x1) <= _VIRTUAL_AMOUNT_PRECISION) {
+            isBalanced = true;
+        } else {
+            isBalanced = false;
+        }
+    }
+
+    function _getVirtualAmounts(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance) internal pure returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
+        uint256 y1 = token1Amount / 2;
+        uint256 x1 = _getReturn(token1Balance, token0Balance, y1);
+        bool isBalanced = !checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+        while (!isBalanced) {
+            y1 = y1 / 2;
+            x1 = _getReturn(token1Balance, token0Balance, y1);
+            isBalanced = !checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+        }
+
+        token0VirtualAmount = token0Amount + x1;
+        token1VirtualAmount = token1Amount - y1;
+    }
+
+    /*
+     *  token0Amount + x1     token0Balance - x1
+     * ------------------- = -------------------- , where x1 = f(y1) = getReturn(..., y1)
+     *  token1Amount - y1     token1Balance + y1
+     */
+    function getVirtualAmounts(uint256 token0Amount, uint256 token1Amount) internal view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
+        uint256 token0Balance = token0.balanceOf(address(this));
+        uint256 token1Balance = token1.balanceOf(address(this));
+
+        uint256 mul0a1b = token0Amount * token1Balance;
+        uint256 mul1a0b = token1Amount * token0Balance;
+        if (mul0a1b > mul1a0b && mul0a1b - mul1a0b <= _VIRTUAL_AMOUNT_PRECISION) {
+            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token0Amount, token1Amount, token0Balance, token1Balance);
+        } else if (mul0a1b < mul1a0b && mul1a0b - mul0a1b <= _VIRTUAL_AMOUNT_PRECISION) {
+            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
+        } else {
+            (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
+        }
+    }
+
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
-        share = depositFor(token0Amount, token1Amount, msg.sender);
+        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmounts(token0Amount, token1Amount);
+        share = depositFor(token0VirtualAmount, token1VirtualAmount, msg.sender);
     }
 
     function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
-        uint256 inputAmount = token0Amount + token1Amount;
+        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmounts(token0Amount, token1Amount);
+
+        uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
         require(inputAmount > 0, "Empty deposit is not allowed");
         require(to != address(this), "Deposit to this is forbidden");
         require(to != address(0), "Deposit to zero is forbidden");
@@ -83,11 +133,11 @@ contract FixedRateSwap is ERC20, Ownable {
             share = inputAmount * _totalSupply / totalBalance;
         }
 
-        if (token0Amount > 0) {
-            token0.safeTransferFrom(msg.sender, address(this), token0Amount);
+        if (token0VirtualAmount > 0) {
+            token0.safeTransferFrom(msg.sender, address(this), token0VirtualAmount);
         }
-        if (token1Amount > 0) {
-            token1.safeTransferFrom(msg.sender, address(this), token1Amount);
+        if (token1VirtualAmount > 0) {
+            token1.safeTransferFrom(msg.sender, address(this), token1VirtualAmount);
         }
         _mint(to, share);
     }
