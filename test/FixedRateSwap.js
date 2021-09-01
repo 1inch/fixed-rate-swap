@@ -32,7 +32,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
 
     describe('Deposits', async function () {
         it('should be cheap', async function () {
-            await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 }); 
+            await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('0.5'), ether('1'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('1'), ether('0.5'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('1'), ether('0'), { from: wallet1 });
