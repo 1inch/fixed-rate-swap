@@ -20,16 +20,6 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         await this.USDC.approve(this.fixedRateSwap.address, ether('10'), { from: wallet2 });
     });
 
-    describe('GetReturn', async function () {
-        it('should be cheap', async function () {
-            await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
-            await this.fixedRateSwap.contract.methods.getReturn(this.USDC.address, this.USDT.address, ether('1')).send({ from: _ });
-            await this.fixedRateSwap.contract.methods._getReturn(ether('1'), ether('1'), ether('1')).send({ from: _ });
-
-            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('2'));
-        });
-    });
-
     describe('Deposits', async function () {
         it('should be cheap', async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });

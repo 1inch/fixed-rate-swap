@@ -55,7 +55,7 @@ contract FixedRateSwap is ERC20, Ownable {
         outputAmount = _getReturn(fromBalance, toBalance, inputAmount);
     }
 
-    function _getReturn(uint256 fromBalance, uint256 toBalance, uint256 inputAmount) public pure returns(uint256 outputAmount) {
+    function _getReturn(uint256 fromBalance, uint256 toBalance, uint256 inputAmount) internal pure returns(uint256 outputAmount) {
         unchecked {
             require(inputAmount <= toBalance, "input amount is too big");
             uint256 totalBalance = fromBalance + toBalance;
@@ -71,7 +71,7 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool isBalanced) {
+    function _checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool isBalanced) {
         if ((token0Amount + x1) * (token1Balance + y1) - (token1Amount - y1) * (token0Balance - x1) <= _VIRTUAL_AMOUNT_PRECISION) {
             isBalanced = true;
         } else {
@@ -82,11 +82,11 @@ contract FixedRateSwap is ERC20, Ownable {
     function _getVirtualAmounts(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance) internal pure returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
         uint256 y1 = token1Amount / 2;
         uint256 x1 = _getReturn(token1Balance, token0Balance, y1);
-        bool isBalanced = !checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+        bool isBalanced = !_checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
         while (!isBalanced) {
             y1 = y1 / 2;
             x1 = _getReturn(token1Balance, token0Balance, y1);
-            isBalanced = !checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+            isBalanced = !_checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
         }
 
         token0VirtualAmount = token0Amount + x1;
@@ -98,7 +98,7 @@ contract FixedRateSwap is ERC20, Ownable {
      * ------------------- = -------------------- , where x1 = f(y1) = getReturn(..., y1)
      *  token1Amount - y1     token1Balance + y1
      */
-    function getVirtualAmounts(uint256 token0Amount, uint256 token1Amount) internal view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
+    function getVirtualAmounts(uint256 token0Amount, uint256 token1Amount) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
 
