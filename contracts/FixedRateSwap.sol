@@ -20,7 +20,7 @@ contract FixedRateSwap is ERC20, Ownable {
     uint256 constant private _C1 = 0.9999e18;
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
-    uint256 immutable private _BIN_SEARCH_THRESHOLD;
+    uint256 immutable private _threshold;
 
     constructor(
         IERC20 _token0,
@@ -34,7 +34,7 @@ contract FixedRateSwap is ERC20, Ownable {
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
-        _BIN_SEARCH_THRESHOLD = 10 ** (decimals_ / 2);
+        _threshold = 10 ** (decimals_ / 2);
     }
 
     function decimals() public view virtual override returns(uint8) {
@@ -103,7 +103,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 dy = _getReturn(xBalance, yBalance, dx);
         int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + x, yBalance + y);
 
-        while (left + _BIN_SEARCH_THRESHOLD < right) {
+        while (left + _threshold < right) {
             if (shift > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
