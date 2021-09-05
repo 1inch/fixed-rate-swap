@@ -1,6 +1,8 @@
 const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
+const { gasspectEVM } = require('./helpers/profileEVM');
+
 const FixedRateSwap = artifacts.require('FixedRateSwap');
 const TokenMock = artifacts.require('TokenMock');
 
@@ -21,12 +23,14 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
     });
 
     describe('Deposits', async function () {
-        it('should be cheap', async function () {
+        it.only('should be cheap', async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('0.5'), ether('1'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('1'), ether('0.5'), { from: wallet1 });
             await this.fixedRateSwap.deposit(ether('1'), ether('0'), { from: wallet1 });
-            await this.fixedRateSwap.deposit(ether('0'), ether('1'), { from: wallet1 });
+            const receipt = await this.fixedRateSwap.deposit(ether('0'), ether('1'), { from: wallet1 });
+            console.log(receipt);
+            gasspectEVM(receipt.tx);
         });
 
         it('should be denied for zero amount', async function () {
