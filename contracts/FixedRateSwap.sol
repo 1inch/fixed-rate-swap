@@ -20,7 +20,7 @@ contract FixedRateSwap is ERC20, Ownable {
     uint256 constant private _C1 = 0.9999e18;
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
-    uint256 constant private _VIRTUAL_AMOUNT_PRECISION = 10**6;
+    uint256 immutable private _BIN_SEARCH_THRESHOLD;
 
     constructor(
         IERC20 _token0,
@@ -34,6 +34,7 @@ contract FixedRateSwap is ERC20, Ownable {
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
+        _BIN_SEARCH_THRESHOLD = 10 ** (decimals_ / 2);
     }
 
     function decimals() public view virtual override returns(uint8) {
@@ -71,41 +72,63 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function _checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool) {
+    /*
+     * Equilibrium is when ratio of the input amounts should be equal to ratio of balance
+     *
+     *  x      xBalance
+     * --- == ----------
+     *  y      yBalance
+     *
+     */
+    function _checkVirtualAmountsFormula(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) internal pure returns(int256) {
         unchecked {
-            return (token0Amount + x1) * (token1Balance + y1) - (token1Amount - y1) * (token0Balance - x1) <= _VIRTUAL_AMOUNT_PRECISION;
+            return int256(x * yBalance - y * xBalance);
         }
-    }
-
-    function _getVirtualAmounts(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance) internal pure returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
-        uint256 y1 = token1Amount / 2;
-        uint256 x1 = _getReturn(token1Balance, token0Balance, y1);
-        bool balanced = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
-        while (!balanced) {
-            y1 = y1 / 2;
-            x1 = _getReturn(token1Balance, token0Balance, y1);
-            balanced = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
-        }
-
-        token0VirtualAmount = token0Amount + x1;
-        token1VirtualAmount = token1Amount - y1;
     }
 
     /*
-     *  token0Amount + x1     token0Balance - x1
-     * ------------------- = -------------------- , where x1 = f(y1) = getReturn(..., y1)
-     *  token1Amount - y1     token1Balance + y1
+     * Inital approximation of dx is taken from the same equation by assuming dx ~ dy
+     *
+     * x - dx     xBalance + x
+     * ------  =  ------------
+     * y + dx     yBalance + y
+     *
+     * dx = (x * yBalance - xBalance * y) / (xBalance + yBalance + x + y)
+     *
      */
+    function _getVirtualAmounts(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) internal view returns(uint256, uint256) {
+        uint256 dx = (x * yBalance - y * xBalance) / (xBalance + yBalance + x + y);
+        uint256 left = dx * 99 / 100;
+        uint256 right = dx * 101 / 100;
+        uint256 dy = _getReturn(xBalance, yBalance, dx);
+        int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + x, yBalance + y);
+
+        while (left + _BIN_SEARCH_THRESHOLD < right) {
+            if (shift > 0) {
+                left = dx;
+                dx = (dx + right) / 2;
+            } else if (shift < 0) {
+                right = dx;
+                dx = (left + dx) / 2;
+            } else {
+                break;
+            }
+            dy = _getReturn(xBalance, yBalance, dx);
+            shift = _checkVirtualAmountsFormula(x - dx, y + dx, xBalance + x, yBalance + y);
+        }
+
+        return (x - dx, y + dy);
+    }
+
     function getVirtualAmounts(uint256 token0Amount, uint256 token1Amount) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
 
-        uint256 mul0a1b = token0Amount * token1Balance;
-        uint256 mul1a0b = token1Amount * token0Balance;
-        if (mul0a1b > mul1a0b && mul0a1b - mul1a0b > _VIRTUAL_AMOUNT_PRECISION) {
-            (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
-        } else if (mul0a1b < mul1a0b && mul1a0b - mul0a1b > _VIRTUAL_AMOUNT_PRECISION) {
+        int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance + token0Amount, token1Balance + token1Amount);
+        if (shift > 0) {
             (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token0Amount, token1Amount, token0Balance, token1Balance);
+        } else if (shift < 0) {
+            (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
         }
