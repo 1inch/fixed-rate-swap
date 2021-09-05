@@ -71,11 +71,9 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function _checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool isBalanced) {
-        if ((token0Amount + x1) * (token1Balance + y1) - (token1Amount - y1) * (token0Balance - x1) <= _VIRTUAL_AMOUNT_PRECISION) {
-            isBalanced = true;
-        } else {
-            isBalanced = false;
+    function _checkVirtualAmountsFormula(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance, uint256 x1, uint256 y1) internal pure returns(bool) {
+        unchecked {
+            return (token0Amount + x1) * (token1Balance + y1) - (token1Amount - y1) * (token0Balance - x1) <= _VIRTUAL_AMOUNT_PRECISION;
         }
     }
 
