@@ -133,11 +133,11 @@ contract FixedRateSwap is ERC20, Ownable {
             share = inputAmount * _totalSupply / totalBalance;
         }
 
-        if (token0VirtualAmount > 0) {
-            token0.safeTransferFrom(msg.sender, address(this), token0VirtualAmount);
+        if (token0Amount > 0) {
+            token0.safeTransferFrom(msg.sender, address(this), token0Amount);
         }
-        if (token1VirtualAmount > 0) {
-            token1.safeTransferFrom(msg.sender, address(this), token1VirtualAmount);
+        if (token1Amount > 0) {
+            token1.safeTransferFrom(msg.sender, address(this), token1Amount);
         }
         _mint(to, share);
     }
