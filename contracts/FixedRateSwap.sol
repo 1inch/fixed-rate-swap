@@ -144,6 +144,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
         require(inputAmount > 0, "Empty deposit is not allowed");
         require(to != address(this), "Deposit to this is forbidden");
+        require(to != address(0), "Deposit to zero is forbidden");
 
         uint256 _totalSupply = totalSupply();
         if (_totalSupply > 0) {
