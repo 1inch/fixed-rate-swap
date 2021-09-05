@@ -146,10 +146,11 @@ contract FixedRateSwap is ERC20, Ownable {
         require(to != address(this), "Deposit to this is forbidden");
 
         uint256 _totalSupply = totalSupply();
-        share = inputAmount;
         if (_totalSupply > 0) {
             uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this));
             share = inputAmount * _totalSupply / totalBalance;
+        } else {
+            share = inputAmount;
         }
 
         if (token0Amount > 0) {
