@@ -114,8 +114,7 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
-        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmounts(token0Amount, token1Amount);
-        share = depositFor(token0VirtualAmount, token1VirtualAmount, msg.sender);
+        share = depositFor(token0Amount, token1Amount, msg.sender);
     }
 
     function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
