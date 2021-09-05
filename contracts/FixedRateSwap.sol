@@ -61,12 +61,12 @@ contract FixedRateSwap is ERC20, Ownable {
             uint256 totalBalance = fromBalance + toBalance;
             uint256 x0 = _ONE * fromBalance / totalBalance;
             uint256 x1 = _ONE * (fromBalance + inputAmount) / totalBalance;
-            uint256 x1subx0 = _ONE * inputAmount / totalBalance;
+            uint256 scaledInputAmount = _ONE * inputAmount;
             uint256 amountMultiplier = (
-                _C1 * x1subx0 +
+                _C1 * scaledInputAmount / totalBalance +
                 _C2 * _powerHelper(x0) -
                 _C2 * _powerHelper(x1)
-            ) / x1subx0;
+            ) * totalBalance / scaledInputAmount;
             outputAmount = inputAmount * Math.min(amountMultiplier, _ONE) / _ONE;
         }
     }
