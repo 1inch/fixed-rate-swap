@@ -103,9 +103,9 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 mul0a1b = token0Amount * token1Balance;
         uint256 mul1a0b = token1Amount * token0Balance;
         if (mul0a1b > mul1a0b && mul0a1b - mul1a0b > _VIRTUAL_AMOUNT_PRECISION) {
-            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token0Amount, token1Amount, token0Balance, token1Balance);
+            (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
         } else if (mul0a1b < mul1a0b && mul1a0b - mul0a1b > _VIRTUAL_AMOUNT_PRECISION) {
-            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
+            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token0Amount, token1Amount, token0Balance, token1Balance);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
         }
