@@ -80,11 +80,11 @@ contract FixedRateSwap is ERC20, Ownable {
     function _getVirtualAmounts(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance) internal pure returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
         uint256 y1 = token1Amount / 2;
         uint256 x1 = _getReturn(token1Balance, token0Balance, y1);
-        bool isBalanced = !_checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
-        while (!isBalanced) {
+        bool balanced = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+        while (!balanced) {
             y1 = y1 / 2;
             x1 = _getReturn(token1Balance, token0Balance, y1);
-            isBalanced = !_checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
+            balanced = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance, x1, y1);
         }
 
         token0VirtualAmount = token0Amount + x1;
