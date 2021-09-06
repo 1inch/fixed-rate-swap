@@ -53,12 +53,12 @@ contract FixedRateSwap is ERC20, Ownable {
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
         uint256 toBalance = tokenTo.balanceOf(address(this));
+        require(inputAmount <= toBalance, "input amount is too big");
         outputAmount = _getReturn(fromBalance, toBalance, inputAmount);
     }
 
     function _getReturn(uint256 fromBalance, uint256 toBalance, uint256 inputAmount) internal pure returns(uint256 outputAmount) {
         unchecked {
-            require(inputAmount <= toBalance, "input amount is too big");
             uint256 totalBalance = fromBalance + toBalance;
             uint256 x0 = _ONE * fromBalance / totalBalance;
             uint256 x1 = _ONE * (fromBalance + inputAmount) / totalBalance;
