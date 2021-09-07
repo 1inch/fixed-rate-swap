@@ -17,6 +17,20 @@ contract FixedRateSwap is ERC20, Ownable {
         int256 token1Amount
     );
 
+    event Deposit(
+        address indexed user,
+        uint256 token0Amount,
+        uint256 token1Amount,
+        uint256 share
+    );
+
+    event Withdrawal(
+        address indexed user,
+        uint256 token0Amount,
+        uint256 token1Amount,
+        uint256 share
+    );
+
     IERC20 immutable public token0;
     IERC20 immutable public token1;
 
@@ -96,6 +110,7 @@ contract FixedRateSwap is ERC20, Ownable {
             token1.safeTransferFrom(msg.sender, address(this), token1Amount);
         }
         _mint(to, share);
+        emit Deposit(to, token0Amount, token1Amount, share);
     }
 
     function withdraw(uint256 amount) external returns(uint256 token0Share, uint256 token1Share) {
@@ -112,6 +127,7 @@ contract FixedRateSwap is ERC20, Ownable {
         token1Share = token1.balanceOf(address(this)) * amount / _totalSupply;
 
         _burn(msg.sender, amount);
+        emit Withdrawal(msg.sender, token0Share, token1Share, amount);
         if (token0Share > 0) {
             token0.safeTransfer(to, token0Share);
         }
