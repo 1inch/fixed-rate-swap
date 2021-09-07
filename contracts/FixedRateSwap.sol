@@ -1,15 +1,36 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 
 contract FixedRateSwap is ERC20, Ownable {
     using SafeERC20 for IERC20;
+
+    event Swap(
+        address indexed trader,
+        int256 token0Amount,
+        int256 token1Amount
+    );
+
+    event Deposit(
+        address indexed user,
+        uint256 token0Amount,
+        uint256 token1Amount,
+        uint256 share
+    );
+
+    event Withdrawal(
+        address indexed user,
+        uint256 token0Amount,
+        uint256 token1Amount,
+        uint256 share
+    );
 
     IERC20 immutable public token0;
     IERC20 immutable public token1;
@@ -35,6 +56,8 @@ contract FixedRateSwap is ERC20, Ownable {
         token1 = _token1;
         _decimals = decimals_;
         _threshold = 10 ** (decimals_ / 2);
+        require(IERC20Metadata(address(_token0)).decimals() == decimals_, "FRS: token0 decimals mismatch");
+        require(IERC20Metadata(address(_token1)).decimals() == decimals_, "FRS: token1 decimals mismatch");
     }
 
     function decimals() public view virtual override returns(uint8) {
@@ -161,6 +184,7 @@ contract FixedRateSwap is ERC20, Ownable {
             token1.safeTransferFrom(msg.sender, address(this), token1Amount);
         }
         _mint(to, share);
+        emit Deposit(to, token0Amount, token1Amount, share);
     }
 
     function withdraw(uint256 amount) external returns(uint256 token0Share, uint256 token1Share) {
@@ -177,6 +201,7 @@ contract FixedRateSwap is ERC20, Ownable {
         token1Share = token1.balanceOf(address(this)) * amount / _totalSupply;
 
         _burn(msg.sender, amount);
+        emit Withdrawal(msg.sender, token0Share, token1Share, amount);
         if (token0Share > 0) {
             token0.safeTransfer(to, token0Share);
         }
@@ -187,10 +212,12 @@ contract FixedRateSwap is ERC20, Ownable {
 
     function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token0, token1, inputAmount, msg.sender);
+        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
     function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token1, token0, inputAmount, msg.sender);
+        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
     function swap0To1For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
@@ -198,6 +225,7 @@ contract FixedRateSwap is ERC20, Ownable {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token0, token1, inputAmount, to);
+        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
     function swap1To0For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
@@ -205,6 +233,7 @@ contract FixedRateSwap is ERC20, Ownable {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token1, token0, inputAmount, to);
+        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
