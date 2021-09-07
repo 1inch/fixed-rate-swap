@@ -11,6 +11,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract FixedRateSwap is ERC20, Ownable {
     using SafeERC20 for IERC20;
 
+    event Swap(
+        address indexed trader,
+        int256 token0Amount,
+        int256 token1Amount
+    );
+
     IERC20 immutable public token0;
     IERC20 immutable public token1;
 
@@ -116,10 +122,12 @@ contract FixedRateSwap is ERC20, Ownable {
 
     function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token0, token1, inputAmount, msg.sender);
+        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
     function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token1, token0, inputAmount, msg.sender);
+        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
     function swap0To1For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
@@ -127,6 +135,7 @@ contract FixedRateSwap is ERC20, Ownable {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token0, token1, inputAmount, to);
+        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
     function swap1To0For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
@@ -134,6 +143,7 @@ contract FixedRateSwap is ERC20, Ownable {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token1, token0, inputAmount, to);
+        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
