@@ -205,7 +205,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
         });
 
-        it.only('should be able to withdraw with 1:9', async function () {
+        it('should be able to withdraw with 1:9', async function () {
             await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.1'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
             assertRoughlyEqualValues(ether('0.9'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
@@ -214,7 +214,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             assertRoughlyEqualValues(ether('9.9'), await this.USDC.balanceOf(wallet1), 0.01);
         });
 
-        it.only('should be able to withdraw with 9:1', async function () {
+        it('should be able to withdraw with 9:1', async function () {
             await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.9'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
             assertRoughlyEqualValues(ether('0.1'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);

@@ -170,9 +170,6 @@ contract FixedRateSwap is ERC20, Ownable {
 
         uint256 targetRatio = firstTokenShare*_ONE / (_ONE - firstTokenShare);
         uint256 dx = (virtualX*_ONE - targetRatio * virtualY)/(targetRatio + _ONE);
-        if (dx == 0) {
-            return (virtualX, virtualY); // nothing to do, we're at propert point
-        }
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
         uint256 dy = _getReturn(xBalance, yBalance, dx);
@@ -209,9 +206,6 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function getRealAmountsForWithdraw(uint256 token0Amount, uint256 token1Amount, uint256 firstTokenShare) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
-        uint256 token0Balance = token0.balanceOf(address(this));
-        uint256 token1Balance = token1.balanceOf(address(this));
-
         if (firstTokenShare < _HALF) {
             (token0VirtualAmount, token1VirtualAmount) = _getRealAmountsForWithdraw(token0Amount, token1Amount, firstTokenShare);
         } else if (firstTokenShare > _HALF) {
