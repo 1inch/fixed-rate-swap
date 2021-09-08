@@ -38,6 +38,7 @@ contract FixedRateSwap is ERC20, Ownable {
     uint8 immutable private _decimals;
 
     uint256 constant private _ONE = 1e18;
+    uint256 constant private _HALF = _ONE/2;
     uint256 constant private _C1 = 0.9999e18;
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
@@ -153,7 +154,7 @@ contract FixedRateSwap is ERC20, Ownable {
      * dx = (x - ratio*y)/(ratio+1)
      * Special casing for 0 and 1 to prevent division by zero
      */
-    function getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
+    function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
         uint256 xBalance = token0.balanceOf(address(this));
         uint256 yBalance = token1.balanceOf(address(this));
 
@@ -202,6 +203,19 @@ contract FixedRateSwap is ERC20, Ownable {
             (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount, token0Balance, token1Balance);
         } else if (shift < 0) {
             (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmountsForDeposit(token1Amount, token0Amount, token1Balance, token0Balance);
+        } else {
+            (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
+        }
+    }
+
+    function getRealAmountsForWithdraw(uint256 token0Amount, uint256 token1Amount, uint256 firstTokenShare) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
+        uint256 token0Balance = token0.balanceOf(address(this));
+        uint256 token1Balance = token1.balanceOf(address(this));
+
+        if (firstTokenShare < _HALF) {
+            (token0VirtualAmount, token1VirtualAmount) = _getRealAmountsForWithdraw(token0Amount, token1Amount, firstTokenShare);
+        } else if (firstTokenShare > _HALF) {
+            (token1VirtualAmount, token0VirtualAmount) = _getRealAmountsForWithdraw(token1Amount, token0Amount, _ONE - firstTokenShare);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
         }
