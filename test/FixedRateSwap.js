@@ -172,12 +172,12 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         });
     });
 
-    describe('Withdrawals', async function () {
+    describe.only('Withdrawals', async function () {
         beforeEach(async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
         });
 
-        it('should be able to exit fully', async function () {
+        it('should be able to withdraw fully', async function () {
             await this.fixedRateSwap.withdraw(ether('2'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal('0');
             expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
@@ -186,8 +186,17 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('10'));
         });
 
-        it('should be able to exit partially', async function () {
+        it('should be able to withdraw partially', async function () {
             await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
+            expect(await this.USDT.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+            expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+        });
+
+        it('should be able to withdraw with 1:1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.5'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
             expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
             expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));

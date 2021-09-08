@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "hardhat/console.sol";
 
 contract FixedRateSwap is ERC20, Ownable {
     using SafeERC20 for IERC20;
@@ -96,7 +96,7 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     /*
-     * Equilibrium is when ratio of the input amounts should be equal to ratio of balance
+     * Equilibrium is when ratio of the amounts should be equal to ratio of balance
      *
      *  x      xBalance
      * --- == ----------
@@ -119,7 +119,7 @@ contract FixedRateSwap is ERC20, Ownable {
      * dx = (x * yBalance - xBalance * y) / (xBalance + yBalance + x + y)
      *
      */
-    function _getVirtualAmounts(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) internal view returns(uint256, uint256) {
+    function _getVirtualAmountsForDeposit(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) internal view returns(uint256, uint256) {
         uint256 dx = (x * yBalance - y * xBalance) / (xBalance + yBalance + x + y);
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
@@ -143,15 +143,65 @@ contract FixedRateSwap is ERC20, Ownable {
         return (x - dx, y + dy);
     }
 
-    function getVirtualAmounts(uint256 token0Amount, uint256 token1Amount) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
+    /*
+     * Inital approximation of dx is taken from the same equation by assuming dx ~ dy
+     *
+     * x - dx
+     * ------  = ratio
+     * y + dx
+     *
+     * dx = (x - ratio*y)/(ratio+1)
+     * Special casing for 0 and 1 to prevent division by zero
+     */
+    function getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
+        uint256 xBalance = token0.balanceOf(address(this));
+        uint256 yBalance = token1.balanceOf(address(this));
+
+        if (firstTokenShare == 0) {
+            uint256 resultDy = _getReturn(xBalance, yBalance, virtualX);
+            return (0, virtualY + resultDy);
+        }
+
+        if (firstTokenShare == 1) {
+            uint256 resultDx = _getReturn(yBalance, xBalance, virtualY);
+            return (virtualX + resultDx, 0);
+        }
+
+        uint256 targetRatio = firstTokenShare*_ONE / (_ONE - firstTokenShare);
+        uint256 dx = (virtualX*_ONE - targetRatio * virtualY)/(targetRatio + _ONE);
+        if (dx == 0) {
+            return (virtualX, virtualY); // nothing to do, we're at propert point
+        }
+        uint256 left = dx * 998 / 1000;
+        uint256 right = Math.min(dx * 1002 / 1000, yBalance);
+        uint256 dy = _getReturn(xBalance, yBalance, dx);
+
+        while (left + _threshold < right) {
+            uint256 ratio = (virtualX - dx)*_ONE/(virtualY + dy);
+            if (ratio < targetRatio) {
+                left = dx;
+                dx = (dx + right) / 2;
+            } else if (ratio > targetRatio) {
+                right = dx;
+                dx = (left + dx) / 2;
+            } else {
+                break;
+            }
+            dy = _getReturn(xBalance, yBalance, dx);
+        }
+
+        return (virtualX - dx, virtualY + dy);
+    }
+
+    function getVirtualAmountsForDeposit(uint256 token0Amount, uint256 token1Amount) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
 
         int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance + token0Amount, token1Balance + token1Amount);
         if (shift > 0) {
-            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmounts(token0Amount, token1Amount, token0Balance, token1Balance);
+            (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount, token0Balance, token1Balance);
         } else if (shift < 0) {
-            (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmounts(token1Amount, token0Amount, token1Balance, token0Balance);
+            (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmountsForDeposit(token1Amount, token0Amount, token1Balance, token0Balance);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
         }
@@ -162,7 +212,7 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
-        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmounts(token0Amount, token1Amount);
+        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmountsForDeposit(token0Amount, token1Amount);
 
         uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
         require(inputAmount > 0, "Empty deposit is not allowed");
@@ -207,6 +257,31 @@ contract FixedRateSwap is ERC20, Ownable {
         }
         if (token1Share > 0) {
             token1.safeTransfer(to, token1Share);
+        }
+    }
+
+    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) public {
+        withdrawForWithRatio(amount, msg.sender, firstTokenShare);
+    }
+
+    function withdrawForWithRatio(uint256 amount, address to, uint256 firstTokenShare) public {
+        require(amount > 0, "Empty withdrawal is not allowed");
+        require(to != address(this), "Withdrawal to this is forbidden");
+        require(to != address(0), "Withdrawal to zero is forbidden");
+        require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
+
+        uint256 _totalSupply = totalSupply();
+        uint256 token0Share = token0.balanceOf(address(this)) * amount / _totalSupply;
+        uint256 token1Share = token1.balanceOf(address(this)) * amount / _totalSupply;
+        (uint256 token0RealAmount, uint256 token1RealAmount) = getRealAmountsForWithdraw(token0Share, token1Share, firstTokenShare);
+
+        _burn(msg.sender, amount);
+        emit Withdrawal(msg.sender, token0Share, token1Share, amount);
+        if (token0RealAmount > 0) {
+            token0.safeTransfer(to, token0RealAmount);
+        }
+        if (token1RealAmount > 0) {
+            token1.safeTransfer(to, token1RealAmount);
         }
     }
 
