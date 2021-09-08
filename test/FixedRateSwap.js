@@ -222,6 +222,24 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             assertRoughlyEqualValues(ether('9.1'), await this.USDT.balanceOf(wallet1), 0.01);
             assertRoughlyEqualValues(ether('9.9'), await this.USDC.balanceOf(wallet1), 0.01);
         });
+
+        it('should be able to withdraw with 1:0', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('1'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('0.00005'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('1'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('10'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('9'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be able to withdraw with 0:1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('1'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('0.00005'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('9'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('10'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
     });
 
     describe('Swaps', async function () {

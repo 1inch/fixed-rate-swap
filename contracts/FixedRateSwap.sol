@@ -152,18 +152,13 @@ contract FixedRateSwap is ERC20, Ownable {
      * y + dx
      *
      * dx = (x - ratio*y)/(ratio+1)
-     * Special casing for 0 and 1 to prevent division by zero
+     *
      */
     function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
         uint256 xBalance = token0.balanceOf(address(this));
         uint256 yBalance = token1.balanceOf(address(this));
 
-        if (firstTokenShare == 0) {
-            uint256 resultDy = _getReturn(xBalance, yBalance, virtualX);
-            return (0, virtualY + resultDy);
-        }
-
-        if (firstTokenShare == 1) {
+        if (firstTokenShare == _ONE) {
             uint256 resultDx = _getReturn(yBalance, xBalance, virtualY);
             return (virtualX + resultDx, 0);
         }
@@ -286,9 +281,11 @@ contract FixedRateSwap is ERC20, Ownable {
         _burn(msg.sender, amount);
         emit Withdrawal(msg.sender, token0Share, token1Share, amount);
         if (token0RealAmount > 0) {
+            console.log("Transfering 0:", token0RealAmount);
             token0.safeTransfer(to, token0RealAmount);
         }
         if (token1RealAmount > 0) {
+            console.log("Transfering 1:", token0RealAmount);
             token1.safeTransfer(to, token1RealAmount);
         }
     }
