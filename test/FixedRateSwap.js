@@ -2,6 +2,7 @@ const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { gasspectEVM } = require('./helpers/profileEVM');
+const { assertRoughlyEqualValues } = require('./helpers/utils');
 
 const FixedRateSwap = artifacts.require('FixedRateSwap');
 const TokenMock = artifacts.require('TokenMock');
@@ -202,6 +203,15 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
             expect(await this.USDT.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
             expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+        });
+
+        it.only('should be able to withdraw with 1:9', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.1'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('0.9'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('0.1'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('9.1'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('9.9'), await this.USDC.balanceOf(wallet1), 0.01);
         });
     });
 
