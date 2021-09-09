@@ -241,7 +241,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             assertRoughlyEqualValues(ether('10'), await this.USDC.balanceOf(wallet1), 0.01);
         });
 
-        it.only('should revert when withdraw too much', async function () {
+        it('should revert when withdraw too much', async function () {
             await expectRevert(
                 this.fixedRateSwap.withdraw(ether('3'), { from: wallet1 }),
                 'ERC20: burn amount exceeds balance',
@@ -253,6 +253,17 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
                 this.fixedRateSwap.withdrawWithRatio(ether('2'), ether('0'), { from: wallet1 }),
                 'ERC20: transfer amount exceeds balance',
             );
+        });
+
+        it.only('deposit/withdraw should be more expensive than swap', async function () {
+            await this.fixedRateSwap.deposit(ether('3'), ether('0'), { from: wallet1 });
+            const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(ether('0'), ether('3'), { from: wallet1 });
+            const preSwapBalance = await this.USDC.balanceOf(wallet1);
+            const swapResult = await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 });
+            const postSwapBalance = await this.USDC.balanceOf(wallet1);
+            const swapDiff = postSwapBalance.sub(preSwapBalance);
+            expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapDiff);
         });
     });
 

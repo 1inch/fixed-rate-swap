@@ -240,53 +240,51 @@ contract FixedRateSwap is ERC20, Ownable {
         emit Deposit(to, token0Amount, token1Amount, share);
     }
 
-    function withdraw(uint256 amount) external returns(uint256 token0Share, uint256 token1Share) {
-        (token0Share, token1Share) = withdrawFor(amount, msg.sender);
+    function withdraw(uint256 amount) external returns(uint256 token0Amount, uint256 token1Amount) {
+        (token0Amount, token1Amount) = withdrawFor(amount, msg.sender);
     }
 
-    function withdrawFor(uint256 amount, address to) public returns(uint256 token0Share, uint256 token1Share) {
+    function withdrawFor(uint256 amount, address to) public returns(uint256 token0Amount, uint256 token1Amount) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
         require(to != address(0), "Withdrawal to zero is forbidden");
 
         uint256 _totalSupply = totalSupply();
-        token0Share = token0.balanceOf(address(this)) * amount / _totalSupply;
-        token1Share = token1.balanceOf(address(this)) * amount / _totalSupply;
+        token0Amount = token0.balanceOf(address(this)) * amount / _totalSupply;
+        token1Amount = token1.balanceOf(address(this)) * amount / _totalSupply;
 
         _burn(msg.sender, amount);
-        emit Withdrawal(msg.sender, token0Share, token1Share, amount);
-        if (token0Share > 0) {
-            token0.safeTransfer(to, token0Share);
+        emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
+        if (token0Amount > 0) {
+            token0.safeTransfer(to, token0Amount);
         }
-        if (token1Share > 0) {
-            token1.safeTransfer(to, token1Share);
+        if (token1Amount > 0) {
+            token1.safeTransfer(to, token1Amount);
         }
     }
 
-    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) public {
-        withdrawForWithRatio(amount, msg.sender, firstTokenShare);
+    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) public returns(uint256 token0Amount, uint256 token1Amount) {
+        return withdrawForWithRatio(amount, msg.sender, firstTokenShare);
     }
 
-    function withdrawForWithRatio(uint256 amount, address to, uint256 firstTokenShare) public {
+    function withdrawForWithRatio(uint256 amount, address to, uint256 firstTokenShare) public returns(uint256 token0Amount, uint256 token1Amount) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
         require(to != address(0), "Withdrawal to zero is forbidden");
         require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
-        uint256 token0Share = token0.balanceOf(address(this)) * amount / _totalSupply;
-        uint256 token1Share = token1.balanceOf(address(this)) * amount / _totalSupply;
-        (uint256 token0RealAmount, uint256 token1RealAmount) = getRealAmountsForWithdraw(token0Share, token1Share, firstTokenShare);
+        uint256 token0VirtualAmount = token0.balanceOf(address(this)) * amount / _totalSupply;
+        uint256 token1VirtualAmount = token1.balanceOf(address(this)) * amount / _totalSupply;
+        (token0Amount, token1Amount) = getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, firstTokenShare);
 
         _burn(msg.sender, amount);
-        emit Withdrawal(msg.sender, token0Share, token1Share, amount);
-        if (token0RealAmount > 0) {
-            console.log("Transfering 0:", token0RealAmount);
-            token0.safeTransfer(to, token0RealAmount);
+        emit Withdrawal(msg.sender, token0VirtualAmount, token1VirtualAmount, amount);
+        if (token0Amount > 0) {
+            token0.safeTransfer(to, token0Amount);
         }
-        if (token1RealAmount > 0) {
-            console.log("Transfering 1:", token0RealAmount);
-            token1.safeTransfer(to, token1RealAmount);
+        if (token1Amount > 0) {
+            token1.safeTransfer(to, token1Amount);
         }
     }
 
