@@ -240,6 +240,20 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             assertRoughlyEqualValues(ether('9'), await this.USDT.balanceOf(wallet1), 0.01);
             assertRoughlyEqualValues(ether('10'), await this.USDC.balanceOf(wallet1), 0.01);
         });
+
+        it.only('should revert when withdraw too much', async function () {
+            await expectRevert(
+                this.fixedRateSwap.withdraw(ether('3'), { from: wallet1 }),
+                'ERC20: burn amount exceeds balance',
+            );
+        });
+
+        it('should revert when withdraw too much in one token', async function () {
+            await expectRevert(
+                this.fixedRateSwap.withdrawWithRatio(ether('2'), ether('0'), { from: wallet1 }),
+                'ERC20: transfer amount exceeds balance',
+            );
+        });
     });
 
     describe('Swaps', async function () {
