@@ -37,7 +37,6 @@ contract FixedRateSwap is ERC20, Ownable {
     uint8 immutable private _decimals;
 
     uint256 constant private _ONE = 1e18;
-    uint256 constant private _HALF = _ONE/2;
     uint256 constant private _C1 = 0.9999e18;
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
@@ -200,9 +199,10 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     function getRealAmountsForWithdraw(uint256 token0Amount, uint256 token1Amount, uint256 firstTokenShare) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
-        if (firstTokenShare > _HALF) {
+        uint256 currentToken0Share = token0Amount*_ONE/(token0Amount + token1Amount);
+        if (firstTokenShare > currentToken0Share) {
             (token0VirtualAmount, token1VirtualAmount) = _getRealAmountsForWithdraw(token0Amount, token1Amount, firstTokenShare);
-        } else if (firstTokenShare < _HALF) {
+        } else if (firstTokenShare < currentToken0Share) {
             (token1VirtualAmount, token0VirtualAmount) = _getRealAmountsForWithdraw(token1Amount, token0Amount, _ONE - firstTokenShare);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
