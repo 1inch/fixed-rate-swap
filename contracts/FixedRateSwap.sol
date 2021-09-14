@@ -278,7 +278,8 @@ contract FixedRateSwap is ERC20, Ownable {
         (token0Amount, token1Amount) = getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, firstTokenShare);
 
         _burn(msg.sender, amount);
-        emit Withdrawal(msg.sender, token0VirtualAmount, token1VirtualAmount, amount);
+        emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
+
         if (token0Amount > 0) {
             token0.safeTransfer(to, token0Amount);
         }
