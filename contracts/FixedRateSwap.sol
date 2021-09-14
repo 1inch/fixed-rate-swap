@@ -145,40 +145,38 @@ contract FixedRateSwap is ERC20, Ownable {
     /*
      * Inital approximation of dx is taken from the same equation by assuming dx ~ dy
      *
-     * x - dx
-     * ------  = ratio
-     * y + dx
+     * x - dx        firstTokenShare
+     * ------  =  ----------------------
+     * y + dx     _ONE - firstTokenShare
      *
-     * dx = (x - ratio * y) / (ratio + 1)
-     *
+     * dx = (x * (_ONE - firstTokenShare) - y * firstTokenShare) / _ONE
      */
-    function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
-        uint256 xBalance = token0.balanceOf(address(this));
-        uint256 yBalance = token1.balanceOf(address(this));
 
-        if (firstTokenShare == _ONE) {
-            uint256 resultDx = _getReturn(yBalance, xBalance, virtualY);
-            return (virtualX + resultDx, 0);
+    function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 balanceX, uint256 balanceY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
+        if (firstTokenShare == 0) {
+            return (0, virtualY + _getReturn(balanceX, balanceY, virtualX));
         }
 
-        uint256 targetRatio = (_ONE - firstTokenShare)*_ONE/firstTokenShare;
-        uint256 dx = (virtualX*_ONE - targetRatio * virtualY)/(targetRatio + _ONE);
+        uint256 secondTokenShare = _ONE - firstTokenShare;
+        uint256 dx = (virtualX * (_ONE - firstTokenShare) - virtualY * firstTokenShare) / _ONE;
         uint256 left = dx * 998 / 1000;
-        uint256 right = Math.min(dx * 1002 / 1000, yBalance);
-        uint256 dy = _getReturn(xBalance, yBalance, dx);
+        uint256 right = Math.min(dx * 1002 / 1000, balanceY);
+        uint256 dy = _getReturn(balanceX, balanceY, dx);
+
+        int256 shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
 
         while (left + _threshold < right) {
-            uint256 ratio = (virtualX - dx)*_ONE/(virtualY + dy);
-            if (ratio < targetRatio) {
+            if (shift > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
-            } else if (ratio > targetRatio) {
+            } else if (shift < 0) {
                 right = dx;
                 dx = (left + dx) / 2;
             } else {
                 break;
             }
-            dy = _getReturn(xBalance, yBalance, dx);
+            dy = _getReturn(balanceX, balanceY, dx);
+            shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
         }
 
         return (virtualX - dx, virtualY + dy);
@@ -188,7 +186,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
 
-        int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance + token0Amount, token1Balance + token1Amount);
+        int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance);
         if (shift > 0) {
             (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount, token0Balance, token1Balance);
         } else if (shift < 0) {
@@ -198,14 +196,17 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function getRealAmountsForWithdraw(uint256 token0Amount, uint256 token1Amount, uint256 firstTokenShare) public view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
-        uint256 currentToken0Share = token0Amount*_ONE/(token0Amount + token1Amount);
-        if (firstTokenShare > currentToken0Share) {
-            (token0VirtualAmount, token1VirtualAmount) = _getRealAmountsForWithdraw(token0Amount, token1Amount, firstTokenShare);
-        } else if (firstTokenShare < currentToken0Share) {
-            (token1VirtualAmount, token0VirtualAmount) = _getRealAmountsForWithdraw(token1Amount, token0Amount, _ONE - firstTokenShare);
+    function getRealAmountsForWithdraw(uint256 token0VirtualAmount, uint256 token1VirtualAmount, uint256 firstTokenShare) public view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
+        uint256 token0Balance = token0.balanceOf(address(this));
+        uint256 token1Balance = token1.balanceOf(address(this));
+
+        uint256 currentToken0Share = token0VirtualAmount * _ONE / (token0VirtualAmount + token1VirtualAmount);
+        if (firstTokenShare < currentToken0Share) {
+            (token0RealAmount, token1RealAmount) = _getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, token0Balance - token0VirtualAmount, token1Balance - token1VirtualAmount, firstTokenShare);
+        } else if (firstTokenShare > currentToken0Share) {
+            (token1RealAmount, token0RealAmount) = _getRealAmountsForWithdraw(token1VirtualAmount, token0VirtualAmount, token1Balance - token1VirtualAmount, token0Balance - token0VirtualAmount, _ONE - firstTokenShare);
         } else {
-            (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
+            (token0RealAmount, token1RealAmount) = (token0VirtualAmount, token1VirtualAmount);
         }
     }
 
@@ -213,7 +214,7 @@ contract FixedRateSwap is ERC20, Ownable {
         share = depositFor(token0Amount, token1Amount, msg.sender);
     }
 
-    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
+    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public returns(uint256 share) {
         (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmountsForDeposit(token0Amount, token1Amount);
 
         uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
