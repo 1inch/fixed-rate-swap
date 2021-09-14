@@ -197,10 +197,7 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function getRealAmountsForWithdraw(uint256 token0VirtualAmount, uint256 token1VirtualAmount, uint256 firstTokenShare) public view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
-        uint256 token0Balance = token0.balanceOf(address(this));
-        uint256 token1Balance = token1.balanceOf(address(this));
-
+    function getRealAmountsForWithdraw(uint256 token0VirtualAmount, uint256 token1VirtualAmount, uint256 token0Balance, uint256 token1Balance, uint256 firstTokenShare) public view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
         uint256 currentToken0Share = token0VirtualAmount * _ONE / (token0VirtualAmount + token1VirtualAmount);
         if (firstTokenShare < currentToken0Share) {
             (token0RealAmount, token1RealAmount) = _getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, token0Balance - token0VirtualAmount, token1Balance - token1VirtualAmount, firstTokenShare);
@@ -275,9 +272,11 @@ contract FixedRateSwap is ERC20, Ownable {
         require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
-        uint256 token0VirtualAmount = token0.balanceOf(address(this)) * amount / _totalSupply;
-        uint256 token1VirtualAmount = token1.balanceOf(address(this)) * amount / _totalSupply;
-        (token0Amount, token1Amount) = getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, firstTokenShare);
+        uint256 token0Balance = token0.balanceOf(address(this));
+        uint256 token1Balance = token1.balanceOf(address(this));
+        uint256 token0VirtualAmount = token0Balance * amount / _totalSupply;
+        uint256 token1VirtualAmount = token1Balance * amount / _totalSupply;
+        (token0Amount, token1Amount) = getRealAmountsForWithdraw(token0VirtualAmount, token1VirtualAmount, token0Balance, token1Balance, firstTokenShare);
 
         _burn(msg.sender, amount);
         emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
