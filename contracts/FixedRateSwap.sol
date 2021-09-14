@@ -95,7 +95,7 @@ contract FixedRateSwap is ERC20, Ownable {
     }
 
     /*
-     * Equilibrium is when ratio of the amounts should be equal to ratio of balance
+     * Equilibrium is when ratio of amounts equals to ratio of balances
      *
      *  x      xBalance
      * --- == ----------
@@ -111,9 +111,9 @@ contract FixedRateSwap is ERC20, Ownable {
     /*
      * Inital approximation of dx is taken from the same equation by assuming dx ~ dy
      *
-     * x - dx     xBalance + x
+     * x - dx     xBalance + dx
      * ------  =  ------------
-     * y + dx     yBalance + y
+     * y + dx     yBalance - dx
      *
      * dx = (x * yBalance - xBalance * y) / (xBalance + yBalance + x + y)
      *
@@ -123,7 +123,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
         uint256 dy = _getReturn(xBalance, yBalance, dx);
-        int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + x, yBalance + y);
+        int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
 
         while (left + _threshold < right) {
             if (shift > 0) {
@@ -136,7 +136,7 @@ contract FixedRateSwap is ERC20, Ownable {
                 break;
             }
             dy = _getReturn(xBalance, yBalance, dx);
-            shift = _checkVirtualAmountsFormula(x - dx, y + dx, xBalance + x, yBalance + y);
+            shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
         }
 
         return (x - dx, y + dy);
@@ -149,7 +149,7 @@ contract FixedRateSwap is ERC20, Ownable {
      * ------  = ratio
      * y + dx
      *
-     * dx = (x - ratio*y)/(ratio+1)
+     * dx = (x - ratio * y) / (ratio + 1)
      *
      */
     function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
