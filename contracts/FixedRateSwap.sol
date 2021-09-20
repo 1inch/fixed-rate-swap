@@ -153,7 +153,7 @@ contract FixedRateSwap is ERC20, Ownable {
      */
 
     function _getRealAmountsForWithdraw(uint256 virtualX, uint256 virtualY, uint256 balanceX, uint256 balanceY, uint256 firstTokenShare) internal view returns(uint256, uint256) {
-        require(balanceX != 0 || balanceY != 0, "Withdraw amount exceeds total contract balance");
+        require(balanceX != 0 || balanceY != 0, "Amount exceeds total balance");
         if (firstTokenShare == 0) {
             return (0, virtualY + _getReturn(balanceX, balanceY, virtualX));
         }

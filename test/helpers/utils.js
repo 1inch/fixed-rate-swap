@@ -1,6 +1,5 @@
 const { expect } = require('chai');
-const { constants, BN, time } = require('@openzeppelin/test-helpers');
-const { promisify } = require('util');
+const { BN } = require('@openzeppelin/test-helpers');
 
 function assertRoughlyEqualValues (expected, actual, relativeDiff) {
     const expectedBN = new BN(expected);
@@ -20,5 +19,5 @@ function assertRoughlyEqualValues (expected, actual, relativeDiff) {
 }
 
 module.exports = {
-    assertRoughlyEqualValues
+    assertRoughlyEqualValues,
 };

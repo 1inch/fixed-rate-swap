@@ -460,7 +460,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         it('should revert when withdraw too much in one token', async function () {
             await expectRevert(
                 this.fixedRateSwap.withdrawWithRatio(ether('2'), ether('0'), { from: wallet1 }),
-                'Withdraw amount exceeds total contract balance',
+                'Amount exceeds total balance',
             );
         });
 
@@ -469,7 +469,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call({ from: wallet1 });
             await this.fixedRateSwap.deposit(ether('0'), ether('3'), { from: wallet1 });
             const preSwapBalance = await this.USDC.balanceOf(wallet1);
-            const swapResult = await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 });
+            await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 });
             const postSwapBalance = await this.USDC.balanceOf(wallet1);
             const swapDiff = postSwapBalance.sub(preSwapBalance);
             expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapDiff);
