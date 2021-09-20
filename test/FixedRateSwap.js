@@ -8,6 +8,8 @@ const FixedRateSwap = artifacts.require('FixedRateSwap');
 const TokenMock = artifacts.require('TokenMock');
 
 contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
+    const lpPresicion = ether('0.001');
+
     beforeEach(async function () {
         this.USDT = await TokenMock.new('USDT', 'USDT');
         this.USDC = await TokenMock.new('USDC', 'USDC');
@@ -83,6 +85,154 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         });
     });
 
+    describe('Arbitrary deposit', async function () {
+        let lpBalanceWallet = web3.utils.toBN('0');
+
+        it('should be error input amount is too big {balances, deposit} = {(0,100), (0,1)}', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+            await expectRevert(
+                this.fixedRateSwap.swap1To0(ether('1'), { from: wallet1 }),
+                'input amount is too big',
+            );
+        });
+
+        it('should be error input amount is too big {balances, deposit} = {(100,0), (1,0)}', async function () {
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+            await expectRevert(
+                this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 }),
+                'input amount is too big',
+            );
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(0,100), (1,0)} part1', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            await this.fixedRateSwap.deposit(ether('1'), 0, { from: wallet1 });
+            lpBalanceWallet = await this.fixedRateSwap.balanceOf(wallet1);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(0,100), (1,0)} part2', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            const outputAmount = await this.fixedRateSwap.contract.methods.swap0To1(ether('1')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(outputAmount, 0, { from: wallet1 });
+            const lpBalance = await this.fixedRateSwap.balanceOf(wallet1);
+            const result = lpBalanceWallet.gt(lpBalance) ? lpBalanceWallet.sub(lpBalance) : lpBalance.sub(lpBalanceWallet);
+            expect(result).to.be.bignumber.lt(lpPresicion);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,0), (0,1)} part1', async function () {
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            await this.fixedRateSwap.deposit(0, ether('1'), { from: wallet1 });
+            lpBalanceWallet = await this.fixedRateSwap.balanceOf(wallet1);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,0), (0,1)} part2', async function () {
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            const outputAmount = await this.fixedRateSwap.contract.methods.swap1To0(ether('1')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(outputAmount, 0, { from: wallet1 });
+            const lpBalance = await this.fixedRateSwap.balanceOf(wallet1);
+            const result = lpBalanceWallet.gt(lpBalance) ? lpBalanceWallet.sub(lpBalance) : lpBalance.sub(lpBalanceWallet);
+            expect(result).to.be.bignumber.lt(lpPresicion);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (0,1)} part1', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            await this.fixedRateSwap.deposit(0, ether('1'), { from: wallet1 });
+            lpBalanceWallet = await this.fixedRateSwap.balanceOf(wallet1);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (0,1)} part2', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            const outputAmount = await this.fixedRateSwap.contract.methods.swap1To0(ether('1')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(outputAmount, 0, { from: wallet1 });
+            const lpBalance = await this.fixedRateSwap.balanceOf(wallet1);
+            const result = lpBalanceWallet.gt(lpBalance) ? lpBalanceWallet.sub(lpBalance) : lpBalance.sub(lpBalanceWallet);
+            expect(result).to.be.bignumber.lt(lpPresicion);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,0)} part1', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            await this.fixedRateSwap.deposit(ether('1'), 0, { from: wallet1 });
+            lpBalanceWallet = await this.fixedRateSwap.balanceOf(wallet1);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,0)} part2', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            const outputAmount = await this.fixedRateSwap.contract.methods.swap0To1(ether('1')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(0, outputAmount, { from: wallet1 });
+            const lpBalance = await this.fixedRateSwap.balanceOf(wallet1);
+            const result = lpBalanceWallet.gt(lpBalance) ? lpBalanceWallet.sub(lpBalance) : lpBalance.sub(lpBalanceWallet);
+            expect(result).to.be.bignumber.lt(lpPresicion);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,1)} part1', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
+            lpBalanceWallet = await this.fixedRateSwap.balanceOf(wallet1);
+        });
+
+        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,1)} part2', async function () {
+            await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
+            await this.USDT.mint(this.fixedRateSwap.address, ether('100'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('0'));
+
+            const outputAmount1 = await this.fixedRateSwap.contract.methods.swap0To1(ether('1')).call({ from: wallet1 });
+            const outputAmount0 = await this.fixedRateSwap.contract.methods.swap1To0(ether('1')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(outputAmount0, outputAmount1, { from: wallet1 });
+            const lpBalance = await this.fixedRateSwap.balanceOf(wallet1);
+            const result = lpBalanceWallet.gt(lpBalance) ? lpBalanceWallet.sub(lpBalance) : lpBalance.sub(lpBalanceWallet);
+            expect(result).to.be.bignumber.lt(lpPresicion);
+        });
+    });
+
     describe('Deposits', async function () {
         it('should be cheap', async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
@@ -94,7 +244,6 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             gasspectEVM(receipt.tx);
         });
 
-        const lpPresicion = ether('0.001');
         it('should mint 1 lp when {balances, deposit} = {(0,100), (0,1)}', async function () {
             await this.USDC.mint(this.fixedRateSwap.address, ether('100'));
             expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
