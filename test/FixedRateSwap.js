@@ -306,13 +306,6 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('2'));
         });
 
-        it('should not be allowed for others', async function () {
-            await expectRevert(
-                this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet2 }),
-                'Ownable: caller is not the owner',
-            );
-        });
-
         it('should give the same shares for the same deposits', async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('2'));
