@@ -212,7 +212,7 @@ contract FixedRateSwap is ERC20, Ownable {
         share = depositFor(token0Amount, token1Amount, msg.sender);
     }
 
-    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public returns(uint256 share) {
+    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public onlyOwner returns(uint256 share) {
         (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = getVirtualAmountsForDeposit(token0Amount, token1Amount);
 
         uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
@@ -289,17 +289,17 @@ contract FixedRateSwap is ERC20, Ownable {
         }
     }
 
-    function swap0To1(uint256 inputAmount) public returns(uint256 outputAmount) {
+    function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token0, token1, inputAmount, msg.sender);
         emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
-    function swap1To0(uint256 inputAmount) public returns(uint256 outputAmount) {
+    function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token1, token0, inputAmount, msg.sender);
         emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
-    function swap0To1For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+    function swap0To1For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
@@ -307,7 +307,7 @@ contract FixedRateSwap is ERC20, Ownable {
         emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
-    function swap1To0For(uint256 inputAmount, address to) public returns(uint256 outputAmount) {
+    function swap1To0For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
