@@ -2,6 +2,7 @@ const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { gasspectEVM } = require('./helpers/profileEVM');
+const { assertRoughlyEqualValues } = require('./helpers/utils');
 
 const FixedRateSwap = artifacts.require('FixedRateSwap');
 const TokenMock = artifacts.require('TokenMock');
@@ -22,6 +23,66 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         await this.USDC.approve(this.fixedRateSwap.address, ether('10'), { from: wallet1 });
         await this.USDT.approve(this.fixedRateSwap.address, ether('10'), { from: wallet2 });
         await this.USDC.approve(this.fixedRateSwap.address, ether('10'), { from: wallet2 });
+    });
+
+    describe('Arbitrary withdrawal', async function () {
+        let usdtBalanceWallet = web3.utils.toBN('0');
+        let usdcBalanceWallet = web3.utils.toBN('0');
+
+        beforeEach(async function () {
+            await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
+        });
+
+        it('should be equal to (withdraw + swap) {1:9} part1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.1'), { from: wallet1 });
+            usdtBalanceWallet = await this.USDT.balanceOf(wallet1);
+            usdcBalanceWallet = await this.USDC.balanceOf(wallet1);
+        });
+
+        it('should be equal to (withdraw + swap) {1:9} part2', async function () {
+            await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
+            await this.fixedRateSwap.contract.methods.swap0To1(ether('0.4')).send({ from: wallet1 });
+            assertRoughlyEqualValues(usdtBalanceWallet, await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(usdcBalanceWallet, await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be equal to (withdraw + swap) {9:1} part1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.9'), { from: wallet1 });
+            usdtBalanceWallet = await this.USDT.balanceOf(wallet1);
+            usdcBalanceWallet = await this.USDC.balanceOf(wallet1);
+        });
+
+        it('should be equal to (withdraw + swap) {9:1} part2', async function () {
+            await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
+            await this.fixedRateSwap.contract.methods.swap1To0(ether('0.4')).send({ from: wallet1 });
+            assertRoughlyEqualValues(usdtBalanceWallet, await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(usdcBalanceWallet, await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be equal to (withdraw + swap) {1:1} part1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.5'), { from: wallet1 });
+            usdtBalanceWallet = await this.USDT.balanceOf(wallet1);
+            usdcBalanceWallet = await this.USDC.balanceOf(wallet1);
+        });
+
+        it('should be equal to (withdraw + swap) {1:1} part2', async function () {
+            await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
+            assertRoughlyEqualValues(usdtBalanceWallet, await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(usdcBalanceWallet, await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be equal to (withdraw + swap) {0:1} part1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0'), { from: wallet1 });
+            usdtBalanceWallet = await this.USDT.balanceOf(wallet1);
+            usdcBalanceWallet = await this.USDC.balanceOf(wallet1);
+        });
+
+        it('should be equal to (withdraw + swap) {0:1} part2', async function () {
+            await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
+            await this.fixedRateSwap.contract.methods.swap0To1(ether('0.5')).send({ from: wallet1 });
+            assertRoughlyEqualValues(usdtBalanceWallet, await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(usdcBalanceWallet, await this.USDC.balanceOf(wallet1), 0.01);
+        });
     });
 
     describe('Arbitrary deposit', async function () {
@@ -319,7 +380,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), { from: wallet1 });
         });
 
-        it('should be able to exit fully', async function () {
+        it('should be able to withdraw fully', async function () {
             await this.fixedRateSwap.withdraw(ether('2'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal('0');
             expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal('0');
@@ -328,13 +389,83 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
             expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('10'));
         });
 
-        it('should be able to exit partially', async function () {
+        it('should be able to withdraw partially', async function () {
             await this.fixedRateSwap.withdraw(ether('1'), { from: wallet1 });
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
             expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
             expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
             expect(await this.USDT.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
             expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+        });
+
+        it('should be able to withdraw with 1:1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.5'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
+            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('0.5'));
+            expect(await this.USDT.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+            expect(await this.USDC.balanceOf(wallet1)).to.be.bignumber.equal(ether('9.5'));
+        });
+
+        it('should be able to withdraw with 1:9', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.1'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('0.9'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('0.1'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('9.1'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('9.9'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be able to withdraw with 9:1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0.9'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('0.1'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('0.9'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('9.9'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('9.1'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be able to withdraw with 1:0', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('1'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('0.000107'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('1'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('10'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('9'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should be able to withdraw with 0:1', async function () {
+            await this.fixedRateSwap.withdrawWithRatio(ether('1'), ether('0'), { from: wallet1 });
+            expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('1'));
+            assertRoughlyEqualValues(ether('1'), await this.USDT.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('0.000107'), await this.USDC.balanceOf(this.fixedRateSwap.address), 0.01);
+            assertRoughlyEqualValues(ether('9'), await this.USDT.balanceOf(wallet1), 0.01);
+            assertRoughlyEqualValues(ether('10'), await this.USDC.balanceOf(wallet1), 0.01);
+        });
+
+        it('should revert when withdraw too much', async function () {
+            await expectRevert(
+                this.fixedRateSwap.withdraw(ether('3'), { from: wallet1 }),
+                'ERC20: burn amount exceeds balance',
+            );
+        });
+
+        it('should revert when withdraw too much in one token', async function () {
+            await expectRevert(
+                this.fixedRateSwap.withdrawWithRatio(ether('2'), ether('0'), { from: wallet1 }),
+                'Amount exceeds total balance',
+            );
+        });
+
+        it.skip('deposit/withdraw should be more expensive than swap', async function () {
+            await this.fixedRateSwap.deposit(ether('3'), ether('0'), { from: wallet1 });
+            const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call({ from: wallet1 });
+            await this.fixedRateSwap.deposit(ether('0'), ether('3'), { from: wallet1 });
+            const preSwapBalance = await this.USDC.balanceOf(wallet1);
+            await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 });
+            const postSwapBalance = await this.USDC.balanceOf(wallet1);
+            const swapDiff = postSwapBalance.sub(preSwapBalance);
+            expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapDiff);
         });
     });
 
