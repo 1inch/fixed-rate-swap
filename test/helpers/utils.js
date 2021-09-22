@@ -18,6 +18,11 @@ function assertRoughlyEqualValues (expected, actual, relativeDiff) {
     }
 }
 
+function toBN (val) {
+    return web3.utils.toBN(val);
+}
+
 module.exports = {
     assertRoughlyEqualValues,
+    toBN,
 };

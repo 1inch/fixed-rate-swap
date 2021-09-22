@@ -120,6 +120,9 @@ contract FixedRateSwap is ERC20, Ownable {
      */
     function _getVirtualAmountsForDeposit(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) internal view returns(uint256, uint256) {
         uint256 dx = (x * yBalance - y * xBalance) / (xBalance + yBalance + x + y);
+        if (dx == 0) {
+            return (x, y);
+        }
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
         uint256 dy = _getReturn(xBalance, yBalance, dx);
