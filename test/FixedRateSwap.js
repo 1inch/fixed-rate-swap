@@ -22,7 +22,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
         for (const addr of [wallet1, wallet2]) {
             for (const token of [this.USDT, this.USDC]) {
                 await token.mint(addr, ether('1000'));
-                await token.approve(this.fixedRateSwap.address, ether('1000'), { from: addr })
+                await token.approve(this.fixedRateSwap.address, ether('1000'), { from: addr });
             }
         }
     });
@@ -217,7 +217,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
                     expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(usdtBalance);
                     expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(usdcBalance);
 
-                    await this.fixedRateSwap.deposit(usdtDeposit, usdcDeposit, { from: wallet2});
+                    await this.fixedRateSwap.deposit(usdtDeposit, usdcDeposit, { from: wallet2 });
                     assertRoughlyEqualValues(await this.fixedRateSwap.balanceOf(wallet2), lpResult, precision);
                 });
             });
