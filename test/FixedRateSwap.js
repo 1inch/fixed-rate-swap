@@ -33,11 +33,11 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         it('should be equal to (withdraw + swap) {1:9}', async function () {
             // arbitrary withdraw
             const arbitraryBalances = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0.1')).call({ from: wallet1 });
-            
+
             // withdraw + swap
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call({ from: wallet1 });
             await this.fixedRateSwap.contract.methods.withdraw(ether('1')).send({ from: wallet1 });
-            
+
             const swapAmount = ether('0.4');
             const token1Amount = await this.fixedRateSwap.contract.methods.swap0To1(swapAmount).call({ from: wallet1 });
             assertRoughlyEqualValues(toBN(arbitraryBalances.token0Amount), toBN(balances.token0Amount).sub(swapAmount), precision);
@@ -47,11 +47,11 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         it('should be equal to (withdraw + swap) {9:1}', async function () {
             // arbitrary withdraw
             const arbitraryBalances = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0.9')).call({ from: wallet1 });
-            
+
             // withdraw + swap
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call({ from: wallet1 });
             await this.fixedRateSwap.contract.methods.withdraw(ether('1')).send({ from: wallet1 });
-            
+
             const swapAmount = ether('0.4');
             const token0Amount = await this.fixedRateSwap.contract.methods.swap1To0(swapAmount).call({ from: wallet1 });
             assertRoughlyEqualValues(toBN(arbitraryBalances.token0Amount), toBN(balances.token0Amount).add(toBN(token0Amount)), precision);
@@ -72,7 +72,7 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         it('should be equal to (withdraw + swap) {0:1}', async function () {
             // arbitrary withdraw
             const arbitraryBalances = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call({ from: wallet1 });
-            
+
             // withdraw + swap
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call({ from: wallet1 });
             const swapAmount = ether('0.5');
@@ -403,14 +403,11 @@ contract('FixedFeeSwap', function ([_, wallet1, wallet2]) {
         });
 
         it.skip('deposit/withdraw should be more expensive than swap', async function () {
-            await this.fixedRateSwap.deposit(ether('3'), ether('0'), { from: wallet1 });
-            const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call({ from: wallet1 });
-            await this.fixedRateSwap.deposit(ether('0'), ether('3'), { from: wallet1 });
-            const preSwapBalance = await this.USDC.balanceOf(wallet1);
-            await this.fixedRateSwap.swap0To1(ether('1'), { from: wallet1 });
-            const postSwapBalance = await this.USDC.balanceOf(wallet1);
-            const swapDiff = postSwapBalance.sub(preSwapBalance);
-            expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapDiff);
+            const swapResult = await this.fixedRateSwap.contract.methods.swap0To1(ether('1')).call({ from: wallet2 });
+            const depositResult = await this.fixedRateSwap.contract.methods.deposit(ether('1'), ether('0')).call({ from: wallet2 });
+            await this.fixedRateSwap.deposit(ether('1'), ether('0'), { from: wallet2 });
+            const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(depositResult, ether('0')).call({ from: wallet2 });
+            expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapResult);
         });
     });
 
