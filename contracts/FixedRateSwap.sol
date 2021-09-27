@@ -54,7 +54,7 @@ contract FixedRateSwap is ERC20, Ownable {
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
-        _threshold = 10 ** (decimals_ / 2);
+        _threshold = 1; //10 ** (decimals_ / 2);
         require(IERC20Metadata(address(_token0)).decimals() == decimals_, "FRS: token0 decimals mismatch");
         require(IERC20Metadata(address(_token1)).decimals() == decimals_, "FRS: token1 decimals mismatch");
     }
@@ -225,7 +225,8 @@ contract FixedRateSwap is ERC20, Ownable {
 
         uint256 _totalSupply = totalSupply();
         if (_totalSupply > 0) {
-            uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this));
+            uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this)) + 
+                                   token0Amount + token1Amount - token0VirtualAmount - token1VirtualAmount;
             share = inputAmount * _totalSupply / totalBalance;
         } else {
             share = inputAmount;
