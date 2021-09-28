@@ -226,7 +226,7 @@ contract FixedRateSwap is ERC20, Ownable {
         uint256 _totalSupply = totalSupply();
         if (_totalSupply > 0) {
             uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this)) + 
-                                   token0Amount + token1Amount - token0VirtualAmount - token1VirtualAmount;
+                                   token0Amount + token1Amount - inputAmount;
             share = inputAmount * _totalSupply / totalBalance;
         } else {
             share = inputAmount;

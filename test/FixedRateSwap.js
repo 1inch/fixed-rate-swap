@@ -363,8 +363,8 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
         });
     });
 
-    it.skip('deposit/withdraw should be more expensive than swap', async function () {
-        await this.fixedRateSwap.deposit(ether('1'), ether('1'));
+    it('deposit/withdraw should be more expensive than swap', async function () {
+        await this.fixedRateSwap.deposit(ether('100'), ether('100'));
         const swapResult = await this.fixedRateSwap.contract.methods.swap0To1(swapAmount).call({ from: wallet2 });
         const depositResult = await this.fixedRateSwap.contract.methods.deposit(swapAmount, '0').call({ from: wallet2 });
         await this.fixedRateSwap.deposit(swapAmount, '0', { from: wallet2 });
