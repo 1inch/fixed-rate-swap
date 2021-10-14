@@ -351,6 +351,6 @@ contract('FixedRateSwap', function ([wallet1, wallet2]) {
         const depositResult = await this.fixedRateSwap.contract.methods.deposit(swapAmount, '0').call({ from: wallet2 });
         await this.fixedRateSwap.deposit(swapAmount, '0', { from: wallet2 });
         const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(depositResult, ether('0')).call({ from: wallet2 });
-        expect(withdrawResult.token1Amount).to.be.bignumber.eq(swapResult);
+        expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapResult);
     });
 });
