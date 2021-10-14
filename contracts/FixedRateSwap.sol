@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.7;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -225,7 +225,7 @@ contract FixedRateSwap is ERC20, Ownable {
 
         uint256 _totalSupply = totalSupply();
         if (_totalSupply > 0) {
-            uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this)) + 
+            uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this)) +
                                    token0Amount + token1Amount - inputAmount;
             share = inputAmount * _totalSupply / totalBalance;
         } else {
