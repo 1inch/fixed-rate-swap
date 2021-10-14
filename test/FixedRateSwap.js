@@ -7,7 +7,7 @@ const { assertRoughlyEqualValues, toBN } = require('./helpers/utils');
 const FixedRateSwap = artifacts.require('FixedRateSwap');
 const TokenMock = artifacts.require('TokenMock');
 
-contract('FixedFeeSwap', function ([wallet1, wallet2]) {
+contract('FixedRateSwap', function ([wallet1, wallet2]) {
     const arbitraryPrecision = '0.0000000000000001'; // 1e-16
     const precision = '0.001';
     const swapAmount = ether('1');
@@ -55,7 +55,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
             // withdraw + swap
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call();
             await this.fixedRateSwap.withdraw(ether('1'));
-                                        
+
             const swapAmount = ether('0.400004147274109535');
             const token1Amount = await this.fixedRateSwap.contract.methods.swap0To1(swapAmount).call();
 
@@ -78,7 +78,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
 
             const swapAmount = ether('0.400004147274109535');
             const token0Amount = await this.fixedRateSwap.contract.methods.swap1To0(swapAmount).call();
-            
+
             assertRoughlyEqualValues(toBN(arbitraryBalances.token0Amount), toBN(balances.token0Amount).add(toBN(token0Amount)), arbitraryPrecision);
             assertRoughlyEqualValues(toBN(arbitraryBalances.token1Amount), toBN(balances.token1Amount).sub(swapAmount), arbitraryPrecision);
             assertRoughlyEqualValues(
@@ -91,7 +91,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
         it('should be equal to (withdraw + swap) {0:1}', async function () {
             // arbitrary withdraw
             const arbitraryBalances = await this.fixedRateSwap.contract.methods.withdrawWithRatio(ether('1'), ether('0')).call();
-            
+
             // withdraw + swap
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call();
             await this.fixedRateSwap.withdraw(ether('1'));
@@ -110,7 +110,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
 
             // withdraw
             const balances = await this.fixedRateSwap.contract.methods.withdraw(ether('1')).call();
-            
+
             expect(arbitraryBalances.token0Amount).to.bignumber.equal(balances.token0Amount);
             expect(arbitraryBalances.token1Amount).to.bignumber.equal(balances.token1Amount);
         });
@@ -129,7 +129,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
             // swap + deposit
             const outputAmount = await this.fixedRateSwap.contract.methods.swap0To1(swapAmount).call();
             await this.fixedRateSwap.contract.methods.swap0To1(swapAmount).send({ from: wallet1 });
-            
+
             const balance0 = await this.USDT.balanceOf(this.fixedRateSwap.address);
             const balance1 = await this.USDC.balanceOf(this.fixedRateSwap.address);
             assertRoughlyEqualValues(
@@ -162,7 +162,7 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
                 toBN(1e18).mul(balance0).div(balance1),
                 arbitraryPrecision,
             );
-            
+
             const lpBalance = await this.fixedRateSwap.contract.methods.deposit(outputAmount, token1Deposit.sub(swapAmount)).call();
             assertRoughlyEqualValues(arbitraryLpBalance, lpBalance, arbitraryPrecision);
         };
@@ -181,24 +181,6 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
 
         it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,0)}', async function () {
             await swap0to1Test.call(this, ether('100'), ether('100'), ether('1'), ether('0'), ether('0.497537438448399645'));
-        });
-
-        it('should be equal to (swap + deposit) {balances, deposit} = {(100,100), (1,1)}', async function () {
-            await this.fixedRateSwap.deposit(ether('100'), ether('100'));
-            expect(await this.USDT.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
-            expect(await this.USDC.balanceOf(this.fixedRateSwap.address)).to.be.bignumber.equal(ether('100'));
-
-            // arbitrary deposit
-            const lpBalanceWallet = await this.fixedRateSwap.contract.methods.deposit(ether('1'), ether('1')).call();
-            const arbitraryLpBalance = toBN(lpBalanceWallet);
-
-            // swap + deposit
-            const outputAmount1 = await this.fixedRateSwap.contract.methods.swap0To1(ether('1')).call();
-            await this.fixedRateSwap.swap0To1(ether('1'));
-            const outputAmount0 = await this.fixedRateSwap.contract.methods.swap1To0(ether('1')).call();
-            await this.fixedRateSwap.swap1To0(ether('1'));
-            const lpBalance = await this.fixedRateSwap.contract.methods.deposit(outputAmount0, outputAmount1).call();
-            assertRoughlyEqualValues(arbitraryLpBalance, lpBalance, precision);
         });
     });
 
@@ -369,6 +351,6 @@ contract('FixedFeeSwap', function ([wallet1, wallet2]) {
         const depositResult = await this.fixedRateSwap.contract.methods.deposit(swapAmount, '0').call({ from: wallet2 });
         await this.fixedRateSwap.deposit(swapAmount, '0', { from: wallet2 });
         const withdrawResult = await this.fixedRateSwap.contract.methods.withdrawWithRatio(depositResult, ether('0')).call({ from: wallet2 });
-        expect(withdrawResult.token1Amount).to.be.bignumber.lt(swapResult);
+        expect(withdrawResult.token1Amount).to.be.bignumber.eq(swapResult);
     });
 });
