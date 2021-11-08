@@ -380,7 +380,7 @@ contract FixedRateSwap is ERC20 {
         uint256 secondTokenShare = _ONE - firstTokenShare;
         uint256 dx = (virtualX * (_ONE - firstTokenShare) - virtualY * firstTokenShare) / _ONE;
         uint256 left = dx * 998 / 1000;
-        uint256 right = Math.min(dx * 1002 / 1000, balanceY);
+        uint256 right = Math.min(dx * 1002 / 1000, virtualX);
         uint256 dy = _getReturn(balanceX, balanceY, dx);
 
         int256 shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
