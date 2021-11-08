@@ -272,10 +272,10 @@ contract FixedRateSwap is ERC20 {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
 
-        int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance);
-        if (shift > 0) {
+        int256 sign = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance);
+        if (sign > 0) {
             (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmountsForDepositImpl(token0Amount, token1Amount, token0Balance, token1Balance);
-        } else if (shift < 0) {
+        } else if (sign < 0) {
             (token1VirtualAmount, token0VirtualAmount) = _getVirtualAmountsForDepositImpl(token1Amount, token0Amount, token1Balance, token0Balance);
         } else {
             (token0VirtualAmount, token1VirtualAmount) = (token0Amount, token1Amount);
@@ -341,20 +341,20 @@ contract FixedRateSwap is ERC20 {
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
         uint256 dy = _getReturn(xBalance, yBalance, dx);
-        int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
+        int256 sign = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
 
         while (left + _THRESHOLD < right) {
-            if (shift > 0) {
+            if (sign > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
-            } else if (shift < 0) {
+            } else if (sign < 0) {
                 right = dx;
                 dx = (left + dx) / 2;
             } else {
                 break;
             }
             dy = _getReturn(xBalance, yBalance, dx);
-            shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
+            sign = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
         }
 
         return (x - dx, y + dy);
@@ -383,20 +383,20 @@ contract FixedRateSwap is ERC20 {
         uint256 right = Math.min(dx * 1002 / 1000, virtualX);
         uint256 dy = _getReturn(balanceX, balanceY, dx);
 
-        int256 shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
+        int256 sign = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
 
         while (left + _THRESHOLD < right) {
-            if (shift > 0) {
+            if (sign > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
-            } else if (shift < 0) {
+            } else if (sign < 0) {
                 right = dx;
                 dx = (left + dx) / 2;
             } else {
                 break;
             }
             dy = _getReturn(balanceX, balanceY, dx);
-            shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
+            sign = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
         }
 
         return (virtualX - dx, virtualY + dy);
@@ -411,10 +411,44 @@ contract FixedRateSwap is ERC20 {
      * --- == ----------
      *  y      yBalance
      *
+     * Function uses 512-bit multiplications to handle overflows.
+     * It returns true when there is excess amount of `x` and false otherwise
      */
-    function _checkVirtualAmountsFormula(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) private pure returns(int256) {
-        unchecked {
-            return int256(x * yBalance - y * xBalance);
+    function _checkVirtualAmountsFormula(uint256 x, uint256 y, uint256 xBalance, uint256 yBalance) private pure returns(int256 sign) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            let mm := mulmod(x, yBalance, not(0))
+            let leftLSB := mul(x, yBalance)
+            let leftMSB := sub(sub(mm, leftLSB), lt(mm, leftLSB))
+            mm := mulmod(y, xBalance, not(0))
+            let rightLSB := mul(y, xBalance)
+            let rightMSB := sub(sub(mm, rightLSB), lt(mm, rightLSB))
+            switch eq(leftMSB, rightMSB)
+            case 1 {
+                switch gt(leftLSB, rightLSB)
+                case 1 {
+                    sign := 1
+                }
+                default {
+                    switch lt(leftLSB, rightLSB)
+                    case 1 {
+                        sign := not(0)
+                    }
+                    // default {
+                    //     // sign is initialized by default so no need in that branch
+                    //     sign := 0
+                    // }
+                }
+            }
+            default {
+                switch gt(leftMSB, rightMSB)
+                case 1 {
+                    sign := 1
+                }
+                default {
+                    sign := not(0)
+                }
+            }
         }
     }
 
