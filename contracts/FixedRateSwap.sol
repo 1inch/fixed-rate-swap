@@ -207,9 +207,9 @@ contract FixedRateSwap is ERC20 {
         require(to != address(0), "Withdrawal to zero is forbidden");
         require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
 
-        (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, firstTokenShare);
-
+        uint256 _totalSupply = totalSupply();
         _burn(msg.sender, amount);
+        (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, firstTokenShare, _totalSupply);
         emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
 
         if (token0Amount > 0) {
@@ -282,8 +282,7 @@ contract FixedRateSwap is ERC20 {
         }
     }
 
-    function _getRealAmountsForWithdraw(uint256 amount, uint256 firstTokenShare) private view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
-        uint256 _totalSupply = totalSupply();
+    function _getRealAmountsForWithdraw(uint256 amount, uint256 firstTokenShare, uint256 _totalSupply) private view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
         uint256 token0VirtualAmount = token0Balance * amount / _totalSupply;
