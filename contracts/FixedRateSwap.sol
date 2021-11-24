@@ -132,14 +132,15 @@ contract FixedRateSwap is ERC20 {
             share = inputAmount;
         }
 
+        _mint(to, share);
+        emit Deposit(to, token0Amount, token1Amount, share);
+
         if (token0Amount > 0) {
             token0.safeTransferFrom(msg.sender, address(this), token0Amount);
         }
         if (token1Amount > 0) {
             token1.safeTransferFrom(msg.sender, address(this), token1Amount);
         }
-        _mint(to, share);
-        emit Deposit(to, token0Amount, token1Amount, share);
     }
 
     /**
