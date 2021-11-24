@@ -169,14 +169,7 @@ contract FixedRateSwap is ERC20 {
         token0Amount = token0.balanceOf(address(this)) * amount / _totalSupply;
         token1Amount = token1.balanceOf(address(this)) * amount / _totalSupply;
 
-        _burn(msg.sender, amount);
-        emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
-        if (token0Amount > 0) {
-            token0.safeTransfer(to, token0Amount);
-        }
-        if (token1Amount > 0) {
-            token1.safeTransfer(to, token1Amount);
-        }
+        _withdraw(to, amount, token0Amount, token1Amount);
     }
 
     /**
@@ -209,16 +202,9 @@ contract FixedRateSwap is ERC20 {
         require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
-        _burn(msg.sender, amount);
         (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, firstTokenShare, _totalSupply);
-        emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
 
-        if (token0Amount > 0) {
-            token0.safeTransfer(to, token0Amount);
-        }
-        if (token1Amount > 0) {
-            token1.safeTransfer(to, token1Amount);
-        }
+        _withdraw(to, amount, token0Amount, token1Amount);
     }
 
     /**
@@ -311,6 +297,17 @@ contract FixedRateSwap is ERC20 {
                 _C2 * _powerHelper(x1)
             ) * totalBalance / scaledInputAmount;
             outputAmount = inputAmount * Math.min(amountMultiplier, _ONE) / _ONE;
+        }
+    }
+
+    function _withdraw(address to, uint256 amount, uint256 token0Amount, uint256 token1Amount) private {
+        _burn(msg.sender, amount);
+        emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
+        if (token0Amount > 0) {
+            token0.safeTransfer(to, token0Amount);
+        }
+        if (token1Amount > 0) {
+            token1.safeTransfer(to, token1Amount);
         }
     }
 
