@@ -338,12 +338,13 @@ contract FixedRateSwap is ERC20 {
         if (dx == 0) {
             return (x, y);
         }
+        uint256 dy;
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, yBalance);
-        uint256 dy = _getReturn(xBalance, yBalance, dx);
-        int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
 
         while (left + _THRESHOLD < right) {
+            dy = _getReturn(xBalance, yBalance, dx);
+            int256 shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
             if (shift > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
@@ -353,8 +354,6 @@ contract FixedRateSwap is ERC20 {
             } else {
                 break;
             }
-            dy = _getReturn(xBalance, yBalance, dx);
-            shift = _checkVirtualAmountsFormula(x - dx, y + dy, xBalance + dx, yBalance - dy);
         }
 
         return (x - dx, y + dy);
@@ -379,13 +378,13 @@ contract FixedRateSwap is ERC20 {
 
         uint256 secondTokenShare = _ONE - firstTokenShare;
         uint256 dx = (virtualX * (_ONE - firstTokenShare) - virtualY * firstTokenShare) / _ONE;
+        uint256 dy;
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, virtualX);
-        uint256 dy = _getReturn(balanceX, balanceY, dx);
-
-        int256 shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
 
         while (left + _THRESHOLD < right) {
+            dy = _getReturn(balanceX, balanceY, dx);
+            int256 shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
             if (shift > 0) {
                 left = dx;
                 dx = (dx + right) / 2;
@@ -395,8 +394,6 @@ contract FixedRateSwap is ERC20 {
             } else {
                 break;
             }
-            dy = _getReturn(balanceX, balanceY, dx);
-            shift = _checkVirtualAmountsFormula(virtualX - dx, virtualY + dy, firstTokenShare, secondTokenShare);
         }
 
         return (virtualX - dx, virtualY + dy);
