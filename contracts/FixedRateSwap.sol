@@ -186,7 +186,7 @@ contract FixedRateSwap is ERC20 {
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      */
-    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) public returns(uint256 token0Amount, uint256 token1Amount) {
+    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) external returns(uint256 token0Amount, uint256 token1Amount) {
         return withdrawForWithRatio(amount, msg.sender, firstTokenShare);
     }
 
