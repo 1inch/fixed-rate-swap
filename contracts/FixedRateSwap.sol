@@ -89,6 +89,7 @@ contract FixedRateSwap is ERC20 {
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
         uint256 toBalance = tokenTo.balanceOf(address(this));
+        // require is needed to be sure that _getReturn math won't overflow
         require(inputAmount <= toBalance, "input amount is too big");
         outputAmount = _getReturn(fromBalance, toBalance, inputAmount);
     }
