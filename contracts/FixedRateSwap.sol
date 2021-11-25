@@ -90,7 +90,7 @@ contract FixedRateSwap is ERC20 {
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
         uint256 toBalance = tokenTo.balanceOf(address(this));
         // require is needed to be sure that _getReturn math won't overflow
-        require(inputAmount <= toBalance, "input amount is too big");
+        require(inputAmount <= toBalance, "Input amount is too big");
         outputAmount = _getReturn(fromBalance, toBalance, inputAmount);
     }
 
