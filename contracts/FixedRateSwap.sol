@@ -15,6 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
   * or increases to 20 bip.
   * Fee calculations are explained in more details in `getReturn` method.
   * Note that AMM does not support token with fees.
+  * Note that tokens decimals are required to be the same.
  */
 contract FixedRateSwap is ERC20 {
     using SafeERC20 for IERC20;
