@@ -333,14 +333,14 @@ contract('FixedRateSwap', function ([wallet1, wallet2]) {
         it('should error with "input amount is too big"', async function () {
             await expectRevert(
                 this.fixedRateSwap.swap1To0(ether('2')),
-                'input amount is too big',
+                'Input amount is too big',
             );
         });
 
         it('should be error input amount is too big {balances, deposit} = {(100,0), (1,0)}', async function () {
             await expectRevert(
                 this.fixedRateSwap.swap0To1(ether('2')),
-                'input amount is too big',
+                'Input amount is too big',
             );
         });
     });
