@@ -118,7 +118,9 @@ contract FixedRateSwap is ERC20 {
      * fair deposit of virtual amounts.
      */
     function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public returns(uint256 share) {
-        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount);
+        uint256 token0Balance = token0.balanceOf(address(this));
+        uint256 token1Balance = token1.balanceOf(address(this));
+        (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount, token0Balance, token1Balance);
 
         uint256 inputAmount = token0VirtualAmount + token1VirtualAmount;
         require(inputAmount > 0, "Empty deposit is not allowed");
@@ -127,8 +129,7 @@ contract FixedRateSwap is ERC20 {
 
         uint256 _totalSupply = totalSupply();
         if (_totalSupply > 0) {
-            uint256 totalBalance = token0.balanceOf(address(this)) + token1.balanceOf(address(this)) +
-                                   token0Amount + token1Amount - inputAmount;
+            uint256 totalBalance = token0Balance + token1Balance + token0Amount + token1Amount - inputAmount;
             share = inputAmount * _totalSupply / totalBalance;
         } else {
             share = inputAmount;
@@ -257,10 +258,9 @@ contract FixedRateSwap is ERC20 {
         emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
-    function _getVirtualAmountsForDeposit(uint256 token0Amount, uint256 token1Amount) private view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount) {
-        uint256 token0Balance = token0.balanceOf(address(this));
-        uint256 token1Balance = token1.balanceOf(address(this));
-
+    function _getVirtualAmountsForDeposit(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance)
+        private view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount)
+    {
         int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance);
         if (shift > 0) {
             (token0VirtualAmount, token1VirtualAmount) = _getVirtualAmountsForDepositImpl(token0Amount, token1Amount, token0Balance, token1Balance);
@@ -376,7 +376,7 @@ contract FixedRateSwap is ERC20 {
         }
 
         uint256 secondTokenShare = _ONE - firstTokenShare;
-        uint256 dx = (virtualX * (_ONE - firstTokenShare) - virtualY * firstTokenShare) / _ONE;
+        uint256 dx = (virtualX * secondTokenShare - virtualY * firstTokenShare) / _ONE;
         uint256 dy;
         uint256 left = dx * 998 / 1000;
         uint256 right = Math.min(dx * 1002 / 1000, virtualX);
