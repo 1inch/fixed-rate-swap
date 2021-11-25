@@ -50,6 +50,9 @@ contract FixedRateSwap is ERC20 {
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
     uint256 constant private _THRESHOLD = 1;
+    uint256 constant private _LOWER_BOUND = 998;
+    uint256 constant private _UPPER_BOUND = 1002;
+    uint256 constant private _DENOMINATOR = 1000;
 
     constructor(
         IERC20 _token0,
@@ -86,6 +89,10 @@ contract FixedRateSwap is ERC20 {
      * `getReturn(x0, x1) = (integral (0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17) dx from x=x0 to x=x1) / (x1 - x0)`
      * `getReturn(x0, x1) = (0.9999 * x - 3.3827123349983306 * (x - 0.4568073509746632) ** 18 from x=x0 to x=x1) / (x1 - x0)`
      * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.3827123349983306 * ((x0 - 0.4568073509746632) ** 18 - (x1 - 0.4568073509746632) ** 18)) / (x1 - x0)`
+     * C0 = 0.9999
+     * C2 = 3.3827123349983306
+     * C3 = 0.4568073509746632
+     * `getReturn(x0, x1) = (C0 * (x1 - x0) + C2 * ((x0 - C3) ** 18 - (x1 - C3) ** 18)) / (x1 - x0)`
      */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
@@ -338,8 +345,8 @@ contract FixedRateSwap is ERC20 {
             return (x, y);
         }
         uint256 dy;
-        uint256 left = dx * 998 / 1000;
-        uint256 right = Math.min(dx * 1002 / 1000, yBalance);
+        uint256 left = dx * _LOWER_BOUND / _DENOMINATOR;
+        uint256 right = Math.min(dx * _UPPER_BOUND / _DENOMINATOR, yBalance);
 
         while (left + _THRESHOLD < right) {
             dy = _getReturn(xBalance, yBalance, dx);
@@ -378,8 +385,8 @@ contract FixedRateSwap is ERC20 {
         uint256 secondTokenShare = _ONE - firstTokenShare;
         uint256 dx = (virtualX * secondTokenShare - virtualY * firstTokenShare) / _ONE;
         uint256 dy;
-        uint256 left = dx * 998 / 1000;
-        uint256 right = Math.min(dx * 1002 / 1000, virtualX);
+        uint256 left = dx * _LOWER_BOUND / _DENOMINATOR;
+        uint256 right = Math.min(dx * _UPPER_BOUND / _DENOMINATOR, virtualX);
 
         while (left + _THRESHOLD < right) {
             dy = _getReturn(balanceX, balanceY, dx);
