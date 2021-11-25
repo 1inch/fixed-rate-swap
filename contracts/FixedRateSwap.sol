@@ -176,19 +176,19 @@ contract FixedRateSwap is ERC20 {
     /**
      * @notice makes a withdrawal with custom ratio
      * @param amount amount of LP tokens to burn
-     * @param firstTokenShare percentage of token0 to receive with 100% equals to 1e18
+     * @param token0Share percentage of token0 to receive with 100% equals to 1e18
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      */
-    function withdrawWithRatio(uint256 amount, uint256 firstTokenShare) external returns(uint256 token0Amount, uint256 token1Amount) {
-        return withdrawForWithRatio(amount, msg.sender, firstTokenShare);
+    function withdrawWithRatio(uint256 amount, uint256 token0Share) external returns(uint256 token0Amount, uint256 token1Amount) {
+        return withdrawForWithRatio(amount, msg.sender, token0Share);
     }
 
     /**
      * @notice makes a withdrawal with custom ratio and transfers tokens to the specified address
      * @param amount amount of LP tokens to burn
      * @param to address that will receive tokens
-     * @param firstTokenShare percentage of token0 to receive with 100% equals to 1e18
+     * @param token0Share percentage of token0 to receive with 100% equals to 1e18
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      *
@@ -196,14 +196,14 @@ contract FixedRateSwap is ERC20 {
      * get to the specified ratio. The contract does exactly this by making virtual proportional withdrawal and then
      * finds the amount needed for an extra virtual swap to achieve specified ratio.
      */
-    function withdrawForWithRatio(uint256 amount, address to, uint256 firstTokenShare) public returns(uint256 token0Amount, uint256 token1Amount) {
+    function withdrawForWithRatio(uint256 amount, address to, uint256 token0Share) public returns(uint256 token0Amount, uint256 token1Amount) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
         require(to != address(0), "Withdrawal to zero is forbidden");
-        require(firstTokenShare <= _ONE, "Ratio should be in [0, 1]");
+        require(token0Share <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
-        (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, firstTokenShare, _totalSupply);
+        (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, token0Share, _totalSupply);
 
         _withdraw(to, amount, token0Amount, token1Amount);
     }
@@ -270,17 +270,17 @@ contract FixedRateSwap is ERC20 {
         }
     }
 
-    function _getRealAmountsForWithdraw(uint256 amount, uint256 firstTokenShare, uint256 _totalSupply) private view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
+    function _getRealAmountsForWithdraw(uint256 amount, uint256 token0Share, uint256 _totalSupply) private view returns(uint256 token0RealAmount, uint256 token1RealAmount) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
         uint256 token0VirtualAmount = token0Balance * amount / _totalSupply;
         uint256 token1VirtualAmount = token1Balance * amount / _totalSupply;
 
         uint256 currentToken0Share = token0VirtualAmount * _ONE / (token0VirtualAmount + token1VirtualAmount);
-        if (firstTokenShare < currentToken0Share) {
-            (token0RealAmount, token1RealAmount) = _getRealAmountsForWithdrawImpl(token0VirtualAmount, token1VirtualAmount, token0Balance - token0VirtualAmount, token1Balance - token1VirtualAmount, firstTokenShare);
-        } else if (firstTokenShare > currentToken0Share) {
-            (token1RealAmount, token0RealAmount) = _getRealAmountsForWithdrawImpl(token1VirtualAmount, token0VirtualAmount, token1Balance - token1VirtualAmount, token0Balance - token0VirtualAmount, _ONE - firstTokenShare);
+        if (token0Share < currentToken0Share) {
+            (token0RealAmount, token1RealAmount) = _getRealAmountsForWithdrawImpl(token0VirtualAmount, token1VirtualAmount, token0Balance - token0VirtualAmount, token1Balance - token1VirtualAmount, token0Share);
+        } else if (token0Share > currentToken0Share) {
+            (token1RealAmount, token0RealAmount) = _getRealAmountsForWithdrawImpl(token1VirtualAmount, token0VirtualAmount, token1Balance - token1VirtualAmount, token0Balance - token0VirtualAmount, _ONE - token0Share);
         } else {
             (token0RealAmount, token1RealAmount) = (token0VirtualAmount, token1VirtualAmount);
         }
