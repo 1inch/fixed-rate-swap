@@ -62,8 +62,8 @@ contract FixedRateSwap is ERC20 {
         token0 = _token0;
         token1 = _token1;
         _decimals = decimals_;
-        require(IERC20Metadata(address(_token0)).decimals() == decimals_, "FRS: token0 decimals mismatch");
-        require(IERC20Metadata(address(_token1)).decimals() == decimals_, "FRS: token1 decimals mismatch");
+        require(IERC20Metadata(address(_token0)).decimals() == decimals_, "token0 decimals mismatch");
+        require(IERC20Metadata(address(_token1)).decimals() == decimals_, "token1 decimals mismatch");
     }
 
     function decimals() public view virtual override returns(uint8) {
