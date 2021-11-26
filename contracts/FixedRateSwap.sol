@@ -183,10 +183,10 @@ contract FixedRateSwap is ERC20 {
         require(to != address(0), "Withdrawal to zero is forbidden");
 
         uint256 _totalSupply = totalSupply();
+        _burn(msg.sender, amount);
         token0Amount = token0.balanceOf(address(this)) * amount / _totalSupply;
         token1Amount = token1.balanceOf(address(this)) * amount / _totalSupply;
-
-        _withdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
+        _handleWithdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
     }
 
     /**
@@ -223,9 +223,9 @@ contract FixedRateSwap is ERC20 {
         require(token0Share <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
+        _burn(msg.sender, amount);
         (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, token0Share, _totalSupply);
-
-        _withdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
+        _handleWithdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
     }
 
     /**
@@ -324,10 +324,10 @@ contract FixedRateSwap is ERC20 {
         }
     }
 
-    function _withdraw(address to, uint256 amount, uint256 token0Amount, uint256 token1Amount, uint256 minToken0Amount, uint256 minToken1Amount) private {
+    function _handleWithdraw(address to, uint256 amount, uint256 token0Amount, uint256 token1Amount, uint256 minToken0Amount, uint256 minToken1Amount) private {
         require(token0Amount >= minToken0Amount, "Min token0Amount is not reached");
         require(token1Amount >= minToken1Amount, "Min token1Amount is not reached");
-        _burn(msg.sender, amount);
+
         emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
         if (token0Amount > 0) {
             token0.safeTransfer(to, token0Amount);
