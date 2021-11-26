@@ -8,9 +8,6 @@ require('solidity-coverage');
 const networks = require('./hardhat.networks');
 
 module.exports = {
-    etherscan: {
-        apiKey: process.env.ETHERSCAN_KEY,
-    },
     solidity: {
         version: '0.8.10',
         settings: {
