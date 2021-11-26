@@ -106,10 +106,11 @@ contract FixedRateSwap is ERC20 {
      * @notice makes a deposit of both tokens to the AMM
      * @param token0Amount amount of token0 to deposit
      * @param token1Amount amount of token1 to deposit
+     * @param minShare minimal required amount of LP tokens received
      * @return share amount of LP tokens received
      */
-    function deposit(uint256 token0Amount, uint256 token1Amount) external returns(uint256 share) {
-        share = depositFor(token0Amount, token1Amount, msg.sender);
+    function deposit(uint256 token0Amount, uint256 token1Amount, uint256 minShare) external returns(uint256 share) {
+        share = depositFor(token0Amount, token1Amount, msg.sender, minShare);
     }
 
     /**
@@ -117,6 +118,7 @@ contract FixedRateSwap is ERC20 {
      * @param token0Amount amount of token0 to deposit
      * @param token1Amount amount of token1 to deposit
      * @param to address that will receive tokens
+     * @param minShare minimal required amount of LP tokens received
      * @return share amount of LP tokens received
      *
      * @dev fully balanced deposit happens when ratio of amounts of deposit matches ratio of balances.
@@ -124,7 +126,7 @@ contract FixedRateSwap is ERC20 {
      * equalize ratios and makes that swap virtually to capture the swap fees. Then final share is calculated from
      * fair deposit of virtual amounts.
      */
-    function depositFor(uint256 token0Amount, uint256 token1Amount, address to) public returns(uint256 share) {
+    function depositFor(uint256 token0Amount, uint256 token1Amount, address to, uint256 minShare) public returns(uint256 share) {
         uint256 token0Balance = token0.balanceOf(address(this));
         uint256 token1Balance = token1.balanceOf(address(this));
         (uint256 token0VirtualAmount, uint256 token1VirtualAmount) = _getVirtualAmountsForDeposit(token0Amount, token1Amount, token0Balance, token1Balance);
@@ -142,6 +144,7 @@ contract FixedRateSwap is ERC20 {
             share = inputAmount;
         }
 
+        require(share >= minShare, "Share is not enough");
         _mint(to, share);
         emit Deposit(to, token0Amount, token1Amount, share);
 
@@ -156,21 +159,25 @@ contract FixedRateSwap is ERC20 {
     /**
      * @notice makes a proportional withdrawal of both tokens
      * @param amount amount of LP tokens to burn
+     * @param minToken0Amount minimal required amount of token0
+     * @param minToken1Amount minimal required amount of token1
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      */
-    function withdraw(uint256 amount) external returns(uint256 token0Amount, uint256 token1Amount) {
-        (token0Amount, token1Amount) = withdrawFor(amount, msg.sender);
+    function withdraw(uint256 amount, uint256 minToken0Amount, uint256 minToken1Amount) external returns(uint256 token0Amount, uint256 token1Amount) {
+        (token0Amount, token1Amount) = withdrawFor(amount, msg.sender, minToken0Amount, minToken1Amount);
     }
 
     /**
      * @notice makes a proportional withdrawal of both tokens and transfers them to the specified address
      * @param amount amount of LP tokens to burn
      * @param to address that will receive tokens
+     * @param minToken0Amount minimal required amount of token0
+     * @param minToken1Amount minimal required amount of token1
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      */
-    function withdrawFor(uint256 amount, address to) public returns(uint256 token0Amount, uint256 token1Amount) {
+    function withdrawFor(uint256 amount, address to, uint256 minToken0Amount, uint256 minToken1Amount) public returns(uint256 token0Amount, uint256 token1Amount) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
         require(to != address(0), "Withdrawal to zero is forbidden");
@@ -179,18 +186,20 @@ contract FixedRateSwap is ERC20 {
         token0Amount = token0.balanceOf(address(this)) * amount / _totalSupply;
         token1Amount = token1.balanceOf(address(this)) * amount / _totalSupply;
 
-        _withdraw(to, amount, token0Amount, token1Amount);
+        _withdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
     }
 
     /**
      * @notice makes a withdrawal with custom ratio
      * @param amount amount of LP tokens to burn
      * @param token0Share percentage of token0 to receive with 100% equals to 1e18
+     * @param minToken0Amount minimal required amount of token0
+     * @param minToken1Amount minimal required amount of token1
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      */
-    function withdrawWithRatio(uint256 amount, uint256 token0Share) external returns(uint256 token0Amount, uint256 token1Amount) {
-        return withdrawForWithRatio(amount, msg.sender, token0Share);
+    function withdrawWithRatio(uint256 amount, uint256 token0Share, uint256 minToken0Amount, uint256 minToken1Amount) external returns(uint256 token0Amount, uint256 token1Amount) {
+        return withdrawForWithRatio(amount, msg.sender, token0Share, minToken0Amount, minToken1Amount);
     }
 
     /**
@@ -198,6 +207,8 @@ contract FixedRateSwap is ERC20 {
      * @param amount amount of LP tokens to burn
      * @param to address that will receive tokens
      * @param token0Share percentage of token0 to receive with 100% equals to 1e18
+     * @param minToken0Amount minimal required amount of token0
+     * @param minToken1Amount minimal required amount of token1
      * @return token0Amount amount of token0 received
      * @return token1Amount amount of token1 received
      *
@@ -205,7 +216,7 @@ contract FixedRateSwap is ERC20 {
      * get to the specified ratio. The contract does exactly this by making virtual proportional withdrawal and then
      * finds the amount needed for an extra virtual swap to achieve specified ratio.
      */
-    function withdrawForWithRatio(uint256 amount, address to, uint256 token0Share) public returns(uint256 token0Amount, uint256 token1Amount) {
+    function withdrawForWithRatio(uint256 amount, address to, uint256 token0Share, uint256 minToken0Amount, uint256 minToken1Amount) public returns(uint256 token0Amount, uint256 token1Amount) {
         require(amount > 0, "Empty withdrawal is not allowed");
         require(to != address(this), "Withdrawal to this is forbidden");
         require(to != address(0), "Withdrawal to zero is forbidden");
@@ -214,26 +225,28 @@ contract FixedRateSwap is ERC20 {
         uint256 _totalSupply = totalSupply();
         (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, token0Share, _totalSupply);
 
-        _withdraw(to, amount, token0Amount, token1Amount);
+        _withdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
     }
 
     /**
      * @notice swaps token0 for token1
      * @param inputAmount amount of token0 to sell
+     * @param minReturnAmount minimal required amount of token1 to buy
      * @return outputAmount amount of token1 bought
      */
-    function swap0To1(uint256 inputAmount) external returns(uint256 outputAmount) {
-        outputAmount = _swap(token0, token1, inputAmount, msg.sender);
+    function swap0To1(uint256 inputAmount, uint256 minReturnAmount) external returns(uint256 outputAmount) {
+        outputAmount = _swap(token0, token1, inputAmount, msg.sender, minReturnAmount);
         emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
     /**
      * @notice swaps token1 for token0
      * @param inputAmount amount of token1 to sell
+     * @param minReturnAmount minimal required amount of token0 to buy
      * @return outputAmount amount of token0 bought
      */
-    function swap1To0(uint256 inputAmount) external returns(uint256 outputAmount) {
-        outputAmount = _swap(token1, token0, inputAmount, msg.sender);
+    function swap1To0(uint256 inputAmount, uint256 minReturnAmount) external returns(uint256 outputAmount) {
+        outputAmount = _swap(token1, token0, inputAmount, msg.sender, minReturnAmount);
         emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
@@ -241,13 +254,14 @@ contract FixedRateSwap is ERC20 {
      * @notice swaps token0 for token1 and transfers them to specified receiver address
      * @param inputAmount amount of token0 to sell
      * @param to address that will receive tokens
+     * @param minReturnAmount minimal required amount of token1 to buy
      * @return outputAmount amount of token1 bought
      */
-    function swap0To1For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
+    function swap0To1For(uint256 inputAmount, address to, uint256 minReturnAmount) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
-        outputAmount = _swap(token0, token1, inputAmount, to);
+        outputAmount = _swap(token0, token1, inputAmount, to, minReturnAmount);
         emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
     }
 
@@ -255,13 +269,14 @@ contract FixedRateSwap is ERC20 {
      * @notice swaps token1 for token0 and transfers them to specified receiver address
      * @param inputAmount amount of token1 to sell
      * @param to address that will receive tokens
+     * @param minReturnAmount minimal required amount of token0 to buy
      * @return outputAmount amount of token0 bought
      */
-    function swap1To0For(uint256 inputAmount, address to) external returns(uint256 outputAmount) {
+    function swap1To0For(uint256 inputAmount, address to, uint256 minReturnAmount) external returns(uint256 outputAmount) {
         require(to != address(this), "Swap to this is forbidden");
         require(to != address(0), "Swap to zero is forbidden");
 
-        outputAmount = _swap(token1, token0, inputAmount, to);
+        outputAmount = _swap(token1, token0, inputAmount, to, minReturnAmount);
         emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
     }
 
@@ -309,7 +324,9 @@ contract FixedRateSwap is ERC20 {
         }
     }
 
-    function _withdraw(address to, uint256 amount, uint256 token0Amount, uint256 token1Amount) private {
+    function _withdraw(address to, uint256 amount, uint256 token0Amount, uint256 token1Amount, uint256 minToken0Amount, uint256 minToken1Amount) private {
+        require(token0Amount >= minToken0Amount, "Min token0Amount is not reached");
+        require(token1Amount >= minToken1Amount, "Min token1Amount is not reached");
         _burn(msg.sender, amount);
         emit Withdrawal(msg.sender, token0Amount, token1Amount, amount);
         if (token0Amount > 0) {
@@ -320,10 +337,11 @@ contract FixedRateSwap is ERC20 {
         }
     }
 
-    function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to) private returns(uint256 outputAmount) {
+    function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to, uint256 minReturnAmount) private returns(uint256 outputAmount) {
         require(inputAmount > 0, "Input amount should be > 0");
         outputAmount = getReturn(tokenFrom, tokenTo, inputAmount);
         require(outputAmount > 0, "Empty swap is not allowed");
+        require(outputAmount >= minReturnAmount, "Min return not reached");
         tokenFrom.safeTransferFrom(msg.sender, address(this), inputAmount);
         tokenTo.safeTransfer(to, outputAmount);
     }
