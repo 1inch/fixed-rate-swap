@@ -232,6 +232,13 @@ contract('FixedRateSwap', function ([wallet1, wallet2]) {
             );
         });
 
+        it('should allow low unbalanced deposit', async function () {
+            await this.fixedRateSwap.deposit(ether('1'), '0', '0');
+            await this.fixedRateSwap.contract.methods.deposit('100000', '100000', '0').call({ from: wallet2 });
+            await this.fixedRateSwap.contract.methods.deposit('100000', '0', '0').call({ from: wallet2 });
+            await this.fixedRateSwap.contract.methods.deposit('0', '100000', '0').call({ from: wallet2 });
+        });
+
         it('should give the same shares for the same deposits', async function () {
             await this.fixedRateSwap.deposit(ether('1'), ether('1'), '0');
             expect(await this.fixedRateSwap.balanceOf(wallet1)).to.be.bignumber.equal(ether('2'));

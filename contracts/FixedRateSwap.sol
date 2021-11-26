@@ -366,7 +366,7 @@ contract FixedRateSwap is ERC20 {
         }
         uint256 dy;
         uint256 left = dx * _LOWER_BOUND / _DENOMINATOR;
-        uint256 right = Math.min(dx * _UPPER_BOUND / _DENOMINATOR, yBalance);
+        uint256 right = Math.min(Math.min(dx * _UPPER_BOUND / _DENOMINATOR, yBalance), x);
 
         while (left + _THRESHOLD < right) {
             dy = _getReturn(xBalance, yBalance, dx);
