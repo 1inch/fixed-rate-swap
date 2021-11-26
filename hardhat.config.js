@@ -26,6 +26,9 @@ module.exports = {
             default: 0,
         },
     },
+    etherscan: {
+        apiKey: process.env.MAINNET_ETHERSCAN_KEY,
+    },
     gasReporter: {
         enable: true,
         currency: 'USD',
