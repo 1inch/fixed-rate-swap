@@ -3,6 +3,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -19,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract FixedRateSwap is ERC20 {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     event Swap(
         address indexed trader,
@@ -237,7 +239,7 @@ contract FixedRateSwap is ERC20 {
      */
     function swap0To1(uint256 inputAmount, uint256 minReturnAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token0, token1, inputAmount, msg.sender, minReturnAmount);
-        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
+        emit Swap(msg.sender, inputAmount.toInt256(), -outputAmount.toInt256());
     }
 
     /**
@@ -248,7 +250,7 @@ contract FixedRateSwap is ERC20 {
      */
     function swap1To0(uint256 inputAmount, uint256 minReturnAmount) external returns(uint256 outputAmount) {
         outputAmount = _swap(token1, token0, inputAmount, msg.sender, minReturnAmount);
-        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
+        emit Swap(msg.sender, -outputAmount.toInt256(), inputAmount.toInt256());
     }
 
     /**
@@ -263,7 +265,7 @@ contract FixedRateSwap is ERC20 {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token0, token1, inputAmount, to, minReturnAmount);
-        emit Swap(msg.sender, int256(inputAmount), -int256(outputAmount));
+        emit Swap(msg.sender, inputAmount.toInt256(), -outputAmount.toInt256());
     }
 
     /**
@@ -278,7 +280,7 @@ contract FixedRateSwap is ERC20 {
         require(to != address(0), "Swap to zero is forbidden");
 
         outputAmount = _swap(token1, token0, inputAmount, to, minReturnAmount);
-        emit Swap(msg.sender, -int256(outputAmount), int256(inputAmount));
+        emit Swap(msg.sender, -outputAmount.toInt256(), inputAmount.toInt256());
     }
 
     function _getVirtualAmountsForDeposit(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance)
