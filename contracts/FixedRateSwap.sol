@@ -226,6 +226,7 @@ contract FixedRateSwap is ERC20 {
         require(token0Share <= _ONE, "Ratio should be in [0, 1]");
 
         uint256 _totalSupply = totalSupply();
+        // burn happens before amounts calculations intentionally — to validate amount
         _burn(msg.sender, amount);
         (token0Amount, token1Amount) = _getRealAmountsForWithdraw(amount, token0Share, _totalSupply);
         _handleWithdraw(to, amount, token0Amount, token1Amount, minToken0Amount, minToken1Amount);
