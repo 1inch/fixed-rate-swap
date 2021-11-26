@@ -95,6 +95,7 @@ contract FixedRateSwap is ERC20 {
      * `getReturn(x0, x1) = (C0 * (x1 - x0) + C2 * ((x0 - C3) ** 18 - (x1 - C3) ** 18)) / (x1 - x0)`
      */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
+        require(inputAmount > 0, "Input amount should be > 0");
         uint256 fromBalance = tokenFrom.balanceOf(address(this));
         uint256 toBalance = tokenTo.balanceOf(address(this));
         // require is needed to be sure that _getReturn math won't overflow
@@ -338,7 +339,6 @@ contract FixedRateSwap is ERC20 {
     }
 
     function _swap(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount, address to, uint256 minReturnAmount) private returns(uint256 outputAmount) {
-        require(inputAmount > 0, "Input amount should be > 0");
         outputAmount = getReturn(tokenFrom, tokenTo, inputAmount);
         require(outputAmount > 0, "Empty swap is not allowed");
         require(outputAmount >= minReturnAmount, "Min return not reached");
