@@ -282,7 +282,7 @@ contract FixedRateSwap is ERC20 {
     }
 
     function _getVirtualAmountsForDeposit(uint256 token0Amount, uint256 token1Amount, uint256 token0Balance, uint256 token1Balance)
-        private view returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount)
+        private pure returns(uint256 token0VirtualAmount, uint256 token1VirtualAmount)
     {
         int256 shift = _checkVirtualAmountsFormula(token0Amount, token1Amount, token0Balance, token1Balance);
         if (shift > 0) {
