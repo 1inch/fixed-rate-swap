@@ -52,8 +52,8 @@ contract FixedRateSwap is ERC20 {
     uint256 constant private _C2 = 3.382712334998325432e18;
     uint256 constant private _C3 = 0.456807350974663119e18;
     uint256 constant private _THRESHOLD = 1;
-    uint256 constant private _LOWER_BOUND = 998;
-    uint256 constant private _UPPER_BOUND = 1002;
+    uint256 constant private _LOWER_BOUND_NUMERATOR = 998;
+    uint256 constant private _UPPER_BOUND_NUMERATOR = 1002;
     uint256 constant private _DENOMINATOR = 1000;
 
     constructor(
@@ -366,8 +366,8 @@ contract FixedRateSwap is ERC20 {
             return (x, y);
         }
         uint256 dy;
-        uint256 left = dx * _LOWER_BOUND / _DENOMINATOR;
-        uint256 right = Math.min(Math.min(dx * _UPPER_BOUND / _DENOMINATOR, yBalance), x);
+        uint256 left = dx * _LOWER_BOUND_NUMERATOR / _DENOMINATOR;
+        uint256 right = Math.min(Math.min(dx * _UPPER_BOUND_NUMERATOR / _DENOMINATOR, yBalance), x);
 
         while (left + _THRESHOLD < right) {
             dy = _getReturn(xBalance, yBalance, dx);
@@ -406,8 +406,8 @@ contract FixedRateSwap is ERC20 {
         uint256 secondTokenShare = _ONE - firstTokenShare;
         uint256 dx = (virtualX * secondTokenShare - virtualY * firstTokenShare) / _ONE;
         uint256 dy;
-        uint256 left = dx * _LOWER_BOUND / _DENOMINATOR;
-        uint256 right = Math.min(dx * _UPPER_BOUND / _DENOMINATOR, virtualX);
+        uint256 left = dx * _LOWER_BOUND_NUMERATOR / _DENOMINATOR;
+        uint256 right = Math.min(dx * _UPPER_BOUND_NUMERATOR / _DENOMINATOR, virtualX);
 
         while (left + _THRESHOLD < right) {
             dy = _getReturn(balanceX, balanceY, dx);
