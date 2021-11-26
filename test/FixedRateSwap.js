@@ -303,6 +303,13 @@ contract('FixedRateSwap', function ([wallet1, wallet2]) {
             );
         });
 
+        it('should revert when withdrawWithRatio too much', async function () {
+            await expectRevert(
+                this.fixedRateSwap.withdrawWithRatio(ether('3'), '0', '0', '0'),
+                'ERC20: burn amount exceeds balance',
+            );
+        });
+
         it('should revert when withdraw too much in one token', async function () {
             await expectRevert(
                 this.fixedRateSwap.withdrawWithRatio(ether('2'), ether('0'), '0', '0'),
