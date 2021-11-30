@@ -84,16 +84,16 @@ contract FixedRateSwap is ERC20 {
      * @return outputAmount amount of `tokenTo` that user will receive after the trade
      *
      * @dev
-     * `getReturn` at point `x = inputBalance / (inputBalance + outputBalance)`:
-     * `getReturn(x) = 0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17`
+     * `rate` at point `x = inputBalance / (inputBalance + outputBalance)`:
+     * `rate(x) = 0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17`
      * When balance is changed from `inputBalance` to `inputBalance + amount` we should take
-     * integral of getReturn to calculate proper amount:
+     * integral of `rate` to calculate proper output amount:
      * `getReturn(x0, x1) = (integral (0.9999 + (0.5817091329374359 - x * 1.2734233188154198)^17) dx from x=x0 to x=x1) / (x1 - x0)`
-     * `getReturn(x0, x1) = (0.9999 * x - 3.3827123349983306 * (x - 0.4568073509746632) ** 18 from x=x0 to x=x1) / (x1 - x0)`
-     * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.3827123349983306 * ((x0 - 0.4568073509746632) ** 18 - (x1 - 0.4568073509746632) ** 18)) / (x1 - x0)`
+     * `getReturn(x0, x1) = (0.9999 * x - 3.382712334998325432 * (x - 0.456807350974663119) ** 18 from x=x0 to x=x1) / (x1 - x0)`
+     * `getReturn(x0, x1) = (0.9999 * (x1 - x0) + 3.382712334998325432 * ((x0 - 0.456807350974663119) ** 18 - (x1 - 0.456807350974663119) ** 18)) / (x1 - x0)`
      * C0 = 0.9999
-     * C2 = 3.3827123349983306
-     * C3 = 0.4568073509746632
+     * C2 = 3.382712334998325432
+     * C3 = 0.456807350974663119
      * `getReturn(x0, x1) = (C0 * (x1 - x0) + C2 * ((x0 - C3) ** 18 - (x1 - C3) ** 18)) / (x1 - x0)`
      */
     function getReturn(IERC20 tokenFrom, IERC20 tokenTo, uint256 inputAmount) public view returns(uint256 outputAmount) {
